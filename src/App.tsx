@@ -8,11 +8,13 @@ interface Patient {
   id: number; name: string; mrn: string; date: string; provider: string;
   nurse: string; stage: string; status: string; exception: string; readiness: number;
 }
-interface Visit { type: string; date: string; }
+interface Visit { type: string; date: string; provider: string; }
 interface ReconcilableItem { reconciled: string[]; unreconciled: string[]; }
+interface CareGap { name: string; lastPerformed: string; nextDueDate: string; }
+interface ScreeningLab { test: string; facility: string; date: string; }
 interface PatientDetail {
   visits: Visit[]; allergies: ReconcilableItem; medications: ReconcilableItem;
-  immunizations: ReconcilableItem; careGaps: string[]; nurseSummary: string; roi: ROI[];
+  immunizations: ReconcilableItem; careGaps: CareGap[]; screeningsAndLabs: ScreeningLab[]; nurseSummary: string[]; complaints: string[]; roi: ROI[];
 }
 interface ROI { id: number; facility: string; requestedDate: string; status: string; patient?: string; }
 interface VisitToday { id: number; patient: string; time: string; provider: string; nurse: string; status: string; }
@@ -55,85 +57,243 @@ const patients: Patient[] = [
 ];
 const defaultDetails: PatientDetail = {
   visits: [], allergies: { reconciled: [], unreconciled: [] }, medications: { reconciled: [], unreconciled: [] },
-  immunizations: { reconciled: [], unreconciled: [] }, careGaps: [], nurseSummary: "No data", roi: []
+  immunizations: { reconciled: [], unreconciled: [] }, careGaps: [], screeningsAndLabs: [], nurseSummary: ["No intake data available."], complaints: [], roi: []
 };
 const patientDetails: Record<number, PatientDetail> = {
   1: {
-    visits: [{ type: "Pulmonary", date: "2025-12-01" }, { type: "Cardiology", date: "2025-11-15" }, { type: "General Checkup", date: "2025-10-20" }],
+    visits: [{ type: "Pulmonary", date: "2025-12-01", provider: "Dr. Smith" }, { type: "Cardiology", date: "2025-11-15", provider: "Dr. Patel" }, { type: "General Checkup", date: "2025-10-20", provider: "Dr. Smith" }],
     allergies: { reconciled: ["Peanuts", "Latex", "Sulfa"], unreconciled: ["Penicillin", "Shellfish"] },
     medications: { reconciled: ["Metformin", "Atorvastatin"], unreconciled: ["Lisinopril", "Aspirin"] },
     immunizations: { reconciled: ["Flu Shot", "Pneumonia"], unreconciled: ["COVID Booster", "Shingles"] },
-    careGaps: ["Annual Physical", "Blood Pressure Check", "Cholesterol Screening"],
-    nurseSummary: "Confirm medication adherence. Monitor cardiac medications. Patient education provided.",
+    careGaps: [{ name: "Annual Physical", lastPerformed: "2024-03-10", nextDueDate: "2026-03-10" }, { name: "Blood Pressure Check", lastPerformed: "2025-01-22", nextDueDate: "2026-01-22" }, { name: "Cholesterol Screening", lastPerformed: "2024-08-15", nextDueDate: "2026-05-20" }],
+    screeningsAndLabs: [
+      { test: "Blood Pressure", facility: "Main Clinic", date: "2026-02-10" },
+      { test: "CBC", facility: "Main Clinic", date: "2025-09-05" },
+      { test: "Cholesterol Panel", facility: "Lab Corp", date: "2025-04-18" },
+      { test: "Blood Pressure", facility: "Main Clinic", date: "2024-11-20" },
+      { test: "HbA1c", facility: "Lab Corp", date: "2024-06-12" },
+    ],
+    nurseSummary: [
+      "Meds: Pt. states taking Metformin + Atorvastatin as prescribed. Lisinopril + Aspirin unreconciled — unable to confirm; follow up with PCP.",
+      "Allergies: Penicillin + Shellfish reported unverified — pt. confirmed allergic to both. Chart updated.",
+      "Vitals: BP 138/86 at intake — slightly elevated, flagged for provider. HR 74, Temp 98.4°F.",
+      "Vaccines: COVID Booster + Shingles not yet received per pt. — referral to pharmacy placed.",
+      "Care Gaps: Annual Physical overdue since 03/2024 — pt. unaware; PCP referral placed. BP check completed today.",
+      "Pt. denies chest pain or SOB today. C/o mild bilateral ankle swelling x2 wks — noted for provider review.",
+    ],
+    complaints: [
+      "Bilateral ankle swelling x2 weeks, pitting noted on left > right",
+      "Exertional shortness of breath — occurs with climbing >1 flight of stairs",
+      "Afternoon fatigue, difficulty completing ADLs by mid-day",
+      "Occasional mild chest tightness at rest — denies radiation to arm/jaw",
+    ],
     roi: [
       { id: 1, facility: "General Hospital", requestedDate: "2026-04-08", status: "Signature Pending" },
       { id: 2, facility: "City Clinic", requestedDate: "2026-04-07", status: "Sent to Facility" }
     ]
   },
   2: {
-    visits: [{ type: "Cardiology", date: "2025-11-15" }, { type: "General Checkup", date: "2025-10-20" }, { type: "Dermatology", date: "2025-09-10" }],
+    visits: [{ type: "Cardiology", date: "2025-11-15", provider: "Dr. Adams" }, { type: "General Checkup", date: "2025-10-20", provider: "Dr. Adams" }, { type: "Dermatology", date: "2025-09-10", provider: "Dr. Lee" }],
     allergies: { reconciled: ["Sulfa", "NSAIDs"], unreconciled: ["Latex", "Penicillin"] },
     medications: { reconciled: ["Atorvastatin", "Ibuprofen"], unreconciled: ["Aspirin", "Metformin"] },
     immunizations: { reconciled: ["Pneumonia", "Flu Shot"], unreconciled: ["Shingles", "COVID Booster"] },
-    careGaps: ["Blood Pressure Check", "Cholesterol Screening", "Skin Cancer Screening"],
-    nurseSummary: "Monitor cardiac medications. Advise on NSAID alternatives. Encourage regular skin checks.",
+    careGaps: [{ name: "Blood Pressure Check", lastPerformed: "2025-02-10", nextDueDate: "2026-02-10" }, { name: "Cholesterol Screening", lastPerformed: "2024-07-18", nextDueDate: "2026-05-10" }, { name: "Skin Cancer Screening", lastPerformed: "2023-11-05", nextDueDate: "2026-05-01" }],
+    screeningsAndLabs: [
+      { test: "Lipid Panel", facility: "Heart Center", date: "2026-01-14" },
+      { test: "Blood Pressure", facility: "Main Clinic", date: "2025-08-22" },
+      { test: "ECG", facility: "Heart Center", date: "2025-03-09" },
+      { test: "Cholesterol Panel", facility: "Lab Corp", date: "2024-09-30" },
+      { test: "Blood Pressure", facility: "Main Clinic", date: "2024-05-17" },
+    ],
+    nurseSummary: [
+      "Meds: Atorvastatin + Ibuprofen active. ⚠ Pt. has NSAIDs allergy — confirmed NOT taking Ibuprofen; flagged for provider. Aspirin + Metformin unreconciled.",
+      "Allergies: Latex + Penicillin unverified — pt. reports h/o mild rash with Penicillin. Latex sensitivity noted, gloves changed. Chart updated.",
+      "Vitals: BP 126/82 — within baseline. HR 68, Temp 98.2°F.",
+      "Vaccines: Shingles + COVID Booster not received per pt. — scheduled at next pharmacy visit.",
+      "Care Gaps: BP check completed today. Skin Cancer Screening due 05/2026 — pt. denies new lesions; referred to Dermatology.",
+      "Pt. c/o intermittent palpitations x1 wk, no dizziness. Denies skin changes. Noted for cardiology review.",
+    ],
+    complaints: [
+      "Intermittent heart palpitations x1 week — episodes lasting ~30 seconds, no syncope",
+      "New pigmented mole on left forearm, noticed ~3 weeks ago; no bleeding or itching reported",
+      "Occasional dizziness on standing from seated position, resolves within seconds",
+    ],
     roi: [{ id: 3, facility: "Heart Center", requestedDate: "2026-04-06", status: "Completed" }]
   },
   3: {
-    visits: [{ type: "Orthopedic", date: "2025-09-30" }, { type: "Physical Therapy", date: "2025-10-15" }],
+    visits: [{ type: "Orthopedic", date: "2025-09-30", provider: "Dr. Brown" }, { type: "Physical Therapy", date: "2025-10-15", provider: "Dr. Brown" }],
     allergies: { reconciled: ["NSAIDs"], unreconciled: ["Sulfa", "Shellfish"] },
     medications: { reconciled: ["Ibuprofen"], unreconciled: ["Metformin", "Atorvastatin"] },
     immunizations: { reconciled: ["Flu Shot", "COVID Booster"], unreconciled: ["Pneumonia"] },
-    careGaps: ["Physical Therapy", "Annual Physical"],
-    nurseSummary: "Follow-up on surgery recovery. Reinforce importance of physical therapy attendance.",
+    careGaps: [{ name: "Physical Therapy", lastPerformed: "2025-10-15", nextDueDate: "2026-04-15" }, { name: "Annual Physical", lastPerformed: "2024-06-20", nextDueDate: "2026-06-10" }],
+    screeningsAndLabs: [
+      { test: "X-Ray (Knee)", facility: "Orthopedic Center", date: "2025-09-30" },
+      { test: "CBC", facility: "Main Clinic", date: "2025-05-14" },
+      { test: "X-Ray (Knee)", facility: "Orthopedic Center", date: "2024-10-08" },
+      { test: "Metabolic Panel", facility: "Lab Corp", date: "2024-06-20" },
+    ],
+    nurseSummary: [
+      "Meds: Ibuprofen active. Metformin + Atorvastatin unreconciled — pt. unsure if still prescribed; will follow up with PCP for clarification.",
+      "Allergies: Sulfa + Shellfish unverified — pt. confirmed h/o hives with Sulfa. Shellfish — pt. unsure; documented as unverified.",
+      "Vitals: BP 118/76, HR 80, Temp 98.6°F. Pain level 4/10 (right knee).",
+      "Vaccines: Pneumonia vaccine not received post-op per pt. — scheduled at next visit.",
+      "Care Gaps: PT attendance confirmed — attended 3 of last 4 sessions. Annual Physical due 06/2026 — PCP appointment not yet booked.",
+      "Pt. c/o right knee stiffness in AM, improving throughout day. No redness or warmth at surgical site. Home PT exercises done 3x/wk per pt.",
+    ],
+    complaints: [
+      "Right knee pain rated 4/10 at rest, 7/10 with activity; worsens on stair climbing",
+      "Morning stiffness lasting ~30 minutes, improving with movement",
+      "Difficulty fully extending right knee — limited ROM noted",
+      "Mild generalized fatigue following physical therapy sessions",
+    ],
     roi: []
   },
   4: {
-    visits: [{ type: "General Checkup", date: "2025-10-05" }, { type: "Neurology", date: "2025-09-20" }],
+    visits: [{ type: "General Checkup", date: "2025-10-05", provider: "Dr. Martinez" }, { type: "Neurology", date: "2025-09-20", provider: "Dr. Chen" }],
     allergies: { reconciled: ["Penicillin", "Codeine"], unreconciled: ["Latex"] },
     medications: { reconciled: ["Gabapentin", "Levothyroxine"], unreconciled: ["Sertraline"] },
     immunizations: { reconciled: ["Flu Shot"], unreconciled: ["COVID Booster", "Pneumonia", "Shingles"] },
-    careGaps: ["Thyroid Function Test", "Mental Health Screening", "Neurological Assessment"],
-    nurseSummary: "Monitor neurological symptoms. Verify thyroid medication compliance. Screen for depression.",
+    careGaps: [{ name: "Thyroid Function Test", lastPerformed: "2024-12-01", nextDueDate: "2026-06-01" }, { name: "Mental Health Screening", lastPerformed: "2024-09-14", nextDueDate: "2026-03-20" }, { name: "Neurological Assessment", lastPerformed: "2025-09-20", nextDueDate: "2026-05-25" }],
+    screeningsAndLabs: [
+      { test: "TSH (Thyroid)", facility: "Lab Corp", date: "2026-01-08" },
+      { test: "Neurological Assessment", facility: "Neurology Clinic", date: "2025-09-20" },
+      { test: "TSH (Thyroid)", facility: "Lab Corp", date: "2025-03-15" },
+      { test: "CBC", facility: "Main Clinic", date: "2024-10-05" },
+      { test: "TSH (Thyroid)", facility: "Lab Corp", date: "2024-06-18" },
+    ],
+    nurseSummary: [
+      "Meds: Gabapentin + Levothyroxine confirmed. Pt. states taking Levothyroxine at 7AM daily. Sertraline unreconciled — pt. states started 2 months ago by PCP; dose unknown.",
+      "Allergies: Latex unverified — pt. reports no prior reactions; documented as precautionary. Gloves changed to non-latex.",
+      "Vitals: BP 122/78, HR 66, Temp 98.5°F. PHQ-2 score: 2 — PHQ-9 administered; score 7 (mild depression), flagged for provider.",
+      "Vaccines: COVID Booster, Pneumonia + Shingles all pending — pt. declined today; documented. Follow up at next visit.",
+      "Care Gaps: Mental Health Screening completed today (PHQ-9). Neuro Assessment due 05/2026 — pt. aware; coord. with Dr. Chen.",
+      "Pt. c/o fatigue and mild memory lapses x3 wks. Denies headaches or vision changes. Reports 5 lb weight gain over 2 months — noted for thyroid review.",
+    ],
+    complaints: [
+      "Persistent fatigue and low energy x3 weeks — difficulty concentrating at work",
+      "Memory lapses — forgetting names and appointments; new onset per pt.",
+      "5 lb unintentional weight gain over past 2 months despite no dietary changes",
+      "Recurring headaches 2–3x/week, frontal, moderate intensity, relieved with Tylenol",
+      "Low mood and decreased motivation — PHQ-9 score 7 (mild) today",
+    ],
     roi: [{ id: 4, facility: "Neurology Clinic", requestedDate: "2026-04-05", status: "Signature Pending" }]
   },
   5: {
-    visits: [{ type: "Gastroenterology", date: "2025-11-10" }, { type: "General Checkup", date: "2025-10-15" }],
+    visits: [{ type: "Gastroenterology", date: "2025-11-10", provider: "Dr. Nguyen" }, { type: "General Checkup", date: "2025-10-15", provider: "Dr. Nguyen" }],
     allergies: { reconciled: ["Shellfish", "Soy"], unreconciled: ["Nuts", "Sesame"] },
     medications: { reconciled: ["Omeprazole", "Simvastatin"], unreconciled: ["Metformin"] },
     immunizations: { reconciled: ["Pneumonia", "Flu Shot", "COVID Booster"], unreconciled: ["Shingles"] },
-    careGaps: ["Colonoscopy", "Liver Function Tests", "Dietary Consultation"],
-    nurseSummary: "Schedule colonoscopy screening. Review dietary modifications. Monitor GI symptoms.",
+    careGaps: [{ name: "Colonoscopy", lastPerformed: "2021-05-12", nextDueDate: "2026-05-12" }, { name: "Liver Function Tests", lastPerformed: "2024-11-03", nextDueDate: "2026-05-03" }, { name: "Dietary Consultation", lastPerformed: "2024-04-28", nextDueDate: "2026-04-28" }],
+    screeningsAndLabs: [
+      { test: "Liver Function Tests", facility: "GI Specialists", date: "2026-02-20" },
+      { test: "H. Pylori Test", facility: "GI Specialists", date: "2025-11-10" },
+      { test: "Liver Function Tests", facility: "Lab Corp", date: "2025-05-03" },
+      { test: "Lipid Panel", facility: "Lab Corp", date: "2024-10-15" },
+    ],
+    nurseSummary: [
+      "Meds: Omeprazole + Simvastatin confirmed. Metformin unreconciled — pt. states taking 500mg BID; reports mild nausea. Added to reconciled list pending provider sign-off.",
+      "Allergies: Nuts + Sesame unverified — pt. reports h/o throat tightening with tree nuts. Sesame unclear. EpiPen at home per pt. Chart flagged.",
+      "Vitals: BP 120/74, HR 70, Temp 98.7°F. Wt: 182 lbs (down 4 lbs from last visit).",
+      "Vaccines: Shingles pending — pt. eligible; scheduled for next pharmacy visit.",
+      "Care Gaps: Colonoscopy overdue — pt. has not had one since 2021; urgent GI Specialists referral placed today. LFTs ordered.",
+      "Pt. c/o bloating and reflux 3–4x/wk, worse after dinner. Denies blood in stool. BMs regular. Dietary consult referral placed.",
+    ],
+    complaints: [
+      "Bloating and acid reflux 3–4x/week, worse after evening meals and when lying down",
+      "Morning nausea without vomiting x3 weeks; pt. relates to Metformin initiation",
+      "Change in bowel habits x6 weeks — alternating loose stools and constipation",
+      "Mild epigastric discomfort after meals, rated 3/10",
+    ],
     roi: [
       { id: 5, facility: "GI Specialists", requestedDate: "2026-04-04", status: "Sent to Facility" },
       { id: 6, facility: "Lab Services", requestedDate: "2026-04-02", status: "Completed" }
     ]
   },
   6: {
-    visits: [{ type: "Rheumatology", date: "2025-11-01" }, { type: "Physical Therapy", date: "2025-10-20" }],
+    visits: [{ type: "Rheumatology", date: "2025-11-01", provider: "Dr. Patel" }, { type: "Physical Therapy", date: "2025-10-20", provider: "Dr. Brown" }],
     allergies: { reconciled: ["Aspirin", "NSAIDs"], unreconciled: ["Sulfa"] },
     medications: { reconciled: ["Methotrexate", "Prednisone"], unreconciled: ["Hydroxychloroquine"] },
     immunizations: { reconciled: ["Flu Shot"], unreconciled: ["COVID Booster", "Pneumonia", "Shingles"] },
-    careGaps: ["Blood Work", "Rheumatology Follow-up", "Joint Assessment"],
-    nurseSummary: "Monitor methotrexate side effects. Ensure regular lab work. Assess joint mobility.",
+    careGaps: [{ name: "Blood Work", lastPerformed: "2025-03-05", nextDueDate: "2026-06-05" }, { name: "Rheumatology Follow-up", lastPerformed: "2025-01-15", nextDueDate: "2026-03-15" }, { name: "Joint Assessment", lastPerformed: "2024-10-20", nextDueDate: "2026-04-20" }],
+    screeningsAndLabs: [
+      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2026-03-05" },
+      { test: "CRP / ESR", facility: "Rheumatology Center", date: "2025-10-12" },
+      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2025-04-28" },
+      { test: "CRP / ESR", facility: "Rheumatology Center", date: "2024-11-01" },
+      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2024-05-22" },
+    ],
+    nurseSummary: [
+      "Meds: Methotrexate + Prednisone confirmed. Pt. denies mouth sores or easy bruising. Reports mild nausea 1–2x/wk after Methotrexate. Hydroxychloroquine unreconciled — pt. states starting next week per rheumatologist.",
+      "Allergies: Sulfa unverified — pt. confirmed h/o rash. ⚠ Critical given immunosuppressive therapy — provider alerted.",
+      "Vitals: BP 130/82, HR 76, Temp 98.3°F. Morning stiffness reported: ~45 min bilat. hands + wrists.",
+      "Vaccines: ⚠ COVID Booster, Pneumonia + Shingles pending — live vaccines contraindicated w/ Methotrexate; provider must approve before scheduling.",
+      "Care Gaps: Rheumatology F/U overdue — pt. states appt. canceled 3/2026; rescheduling in progress. Joint Assessment performed today; ROM limited at wrists bilat.",
+      "Pt. c/o increased joint pain over past 2 wks. Denies vision changes or light sensitivity. Ophthalmology screen (Hydroxychloroquine) not yet scheduled — noted.",
+    ],
+    complaints: [
+      "Bilateral wrist and hand joint pain — rated 5/10 at rest, worsening with gripping",
+      "Morning stiffness in hands and wrists lasting approximately 45 minutes daily",
+      "Generalized fatigue x2 weeks — pt. reports difficulty completing household tasks",
+      "Nausea 1–2x/week following Methotrexate dose on Mondays",
+    ],
     roi: [{ id: 7, facility: "Rheumatology Center", requestedDate: "2026-04-08", status: "Signature Pending" }]
   },
   7: {
-    visits: [{ type: "Pulmonary", date: "2025-12-10" }, { type: "Sleep Medicine", date: "2025-11-25" }],
+    visits: [{ type: "Pulmonary", date: "2025-12-10", provider: "Dr. Smith" }, { type: "Sleep Medicine", date: "2025-11-25", provider: "Dr. Lee" }],
     allergies: { reconciled: ["Tree Nuts"], unreconciled: ["Shellfish", "Fish"] },
     medications: { reconciled: ["Albuterol", "Fluticasone"], unreconciled: ["Montelukast"] },
     immunizations: { reconciled: ["Flu Shot", "Pneumonia", "COVID Booster"], unreconciled: ["Shingles"] },
-    careGaps: ["Pulmonary Function Test", "Sleep Study", "Oxygen Saturation Monitoring"],
-    nurseSummary: "Assess asthma control. Review inhaler technique. Schedule sleep study if indicated.",
+    careGaps: [{ name: "Pulmonary Function Test", lastPerformed: "2025-06-18", nextDueDate: "2026-06-10" }, { name: "Sleep Study", lastPerformed: "2024-03-22", nextDueDate: "2026-03-22" }, { name: "Oxygen Saturation Monitoring", lastPerformed: "2025-11-25", nextDueDate: "2026-02-28" }],
+    screeningsAndLabs: [
+      { test: "Pulmonary Function Test", facility: "Pulmonology Associates", date: "2025-12-10" },
+      { test: "Oxygen Saturation", facility: "Main Clinic", date: "2025-06-18" },
+      { test: "Chest X-Ray", facility: "Pulmonology Associates", date: "2025-01-30" },
+      { test: "Pulmonary Function Test", facility: "Pulmonology Associates", date: "2024-07-09" },
+    ],
+    nurseSummary: [
+      "Meds: Albuterol + Fluticasone confirmed. Inhaler technique reviewed — pt. demonstrated correct use. Montelukast unreconciled — pt. states taking 10mg QD per pulmonologist.",
+      "Allergies: Shellfish + Fish unverified — pt. reports h/o hives with shellfish; fish unclear. Chart flagged. Non-latex gloves used.",
+      "Vitals: BP 118/74, HR 82, Temp 98.5°F. SpO2: 96% on RA — within acceptable range, noted.",
+      "Vaccines: Shingles pending — scheduled for next visit.",
+      "Care Gaps: Sleep Study overdue — pt. stopped CPAP 6 months ago; still symptomatic (snoring, daytime fatigue). Referral to Sleep Medicine placed. O2 Sat monitored today.",
+      "Pt. c/o nighttime coughing 3–4x/wk and exertional SOB. Denies recent ER visits or oral steroids. No respiratory infections since last visit. PFT due 06/2026 — pt. aware.",
+    ],
+    complaints: [
+      "Nighttime coughing episodes 3–4x/week, worse in early morning; disrupts sleep",
+      "Exertional shortness of breath — onset after walking >1 city block",
+      "Daytime fatigue — pt. falling asleep at desk; correlates with poor nighttime sleep",
+      "Loud snoring with witnessed apnea episodes per bed partner; stopped CPAP 6 months ago",
+    ],
     roi: [{ id: 8, facility: "Pulmonology Associates", requestedDate: "2026-04-07", status: "Sent to Facility" }]
   },
   8: {
-    visits: [{ type: "Oncology", date: "2025-10-30" }, { type: "General Checkup", date: "2025-10-15" }],
+    visits: [{ type: "Oncology", date: "2025-10-30", provider: "Dr. Chen" }, { type: "General Checkup", date: "2025-10-15", provider: "Dr. Martinez" }],
     allergies: { reconciled: ["Contrast Dye", "Latex"], unreconciled: ["Chemotherapy agents"] },
     medications: { reconciled: ["Tamoxifen", "Loratadine"], unreconciled: ["Vitamin D supplement"] },
     immunizations: { reconciled: ["Flu Shot"], unreconciled: ["COVID Booster", "Pneumonia"] },
-    careGaps: ["Oncology Follow-up", "Mammography", "Tumor Markers", "Bone Density Scan"],
-    nurseSummary: "Monitor Tamoxifen side effects. Schedule mammography screening. Assess quality of life.",
+    careGaps: [{ name: "Oncology Follow-up", lastPerformed: "2025-10-30", nextDueDate: "2026-04-30" }, { name: "Mammography", lastPerformed: "2024-08-09", nextDueDate: "2026-02-15" }, { name: "Tumor Markers", lastPerformed: "2025-09-15", nextDueDate: "2026-03-15" }, { name: "Bone Density Scan", lastPerformed: "2023-12-01", nextDueDate: "2026-05-15" }],
+    screeningsAndLabs: [
+      { test: "Tumor Markers (CA 15-3)", facility: "Cancer Center", date: "2026-02-15" },
+      { test: "Mammography", facility: "Imaging Center", date: "2025-08-09" },
+      { test: "Tumor Markers (CA 15-3)", facility: "Cancer Center", date: "2025-03-20" },
+      { test: "Bone Density Scan", facility: "Imaging Center", date: "2024-12-01" },
+      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2024-07-11" },
+    ],
+    nurseSummary: [
+      "Meds: Tamoxifen + Loratadine confirmed. Pt. reports hot flashes daily and AM joint stiffness — documented, flagged for provider. Vitamin D supplement unreconciled; pt. states taking 2000 IU OTC.",
+      "Allergies: ⚠ Chemotherapy agents allergy unreconciled — critical; provider alerted before any new Rx ordered. Contrast Dye + Latex confirmed, chart updated.",
+      "Vitals: BP 124/78, HR 70, Temp 98.4°F. Wt: 164 lbs (stable). Pt. denies leg swelling or unusual vaginal bleeding.",
+      "Vaccines: ⚠ COVID Booster + Pneumonia pending — immunosuppressed; vaccination hold confirmed with oncology team.",
+      "Care Gaps: Mammography overdue — not done since 08/2024; urgent referral placed to Imaging Center. Tumor Markers (CA 15-3) overdue — labs ordered today.",
+      "Pt. c/o increased fatigue x3 wks and decreased appetite. Denies new pain. Oncology F/U confirmed 04/30/2026 at Cancer Center.",
+    ],
+    complaints: [
+      "Increased fatigue x3 weeks — sleeping 10+ hours/night, still exhausted; affecting daily function",
+      "Decreased appetite — eating ~50% of usual meals; 3 lb unintentional weight loss in 3 weeks",
+      "Daily hot flashes — 4–6 episodes/day, lasting 5–10 minutes; disrupting sleep",
+      "AM joint stiffness in hands and knees, lasting ~20 minutes; attributed to Tamoxifen",
+      "Mild lower back ache x1 week — rated 2/10, no radiation to legs; noted for oncology review",
+    ],
     roi: [
       { id: 9, facility: "Cancer Center", requestedDate: "2026-04-06", status: "Completed" },
       { id: 10, facility: "Imaging Center", requestedDate: "2026-04-05", status: "Signature Pending" }
@@ -278,7 +438,7 @@ function ReadinessGauge({ value }: { value: number }): JSX.Element {
   const needleY = cy + (r - 6) * Math.sin(needleRad);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg width={80} height={46} viewBox="0 0 100 58">
+      <svg width={56} height={32} viewBox="0 0 100 58">
         <path d={`M ${startX} ${startY} A ${r} ${r} 0 0 1 ${endX} ${startY}`} fill="none" stroke="#e5e7eb" strokeWidth={6} strokeLinecap="round" />
         {value > 0 && (
           <path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${arcX.toFixed(2)} ${arcY.toFixed(2)}`} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round" />
@@ -286,7 +446,7 @@ function ReadinessGauge({ value }: { value: number }): JSX.Element {
         <line x1={cx} y1={cy} x2={needleX.toFixed(2)} y2={needleY.toFixed(2)} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
         <circle cx={cx} cy={cy} r={3} fill={color} />
       </svg>
-      <div style={{ fontSize: 13, fontWeight: 700, color, marginTop: -4 }}>{value}%</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color, marginTop: -2 }}>{value}%</div>
     </div>
   );
 }
@@ -755,8 +915,8 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
     deps: [patient.id, isAuthenticated, activeTab],
   });
   const liveTasks = liveData?.items ?? [];
-  const thS: React.CSSProperties = { padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid #e2e8f0" };
-  const tdS: React.CSSProperties = { padding: "12px 14px", borderBottom: "1px solid #f1f5f9", fontSize: 13, color: "#374151" };
+  const thS: React.CSSProperties = { padding: "5px 10px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid #e2e8f0" };
+  const tdS: React.CSSProperties = { padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontSize: 12, color: "#374151" };
   const tabBtn = (id: typeof activeTab, label: string) => (
     <button onClick={() => setActiveTab(id)} style={{
       background: "none", border: "none", padding: "10px 4px", marginRight: 24, fontSize: 14, fontWeight: 500,
@@ -774,46 +934,54 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
       </div>
       <div style={{ display: "flex" }}>
         {/* Left patient card */}
-        <div style={{ width: 240, flexShrink: 0, background: "#eff6ff", borderRight: "1px solid #bfdbfe", display: "flex", flexDirection: "column", gap: 0, minHeight: "calc(100vh - 57px)" }}>
+        <div style={{ width: 300, flexShrink: 0, background: "#eff6ff", borderRight: "1px solid #bfdbfe", display: "flex", flexDirection: "column", gap: 0, minHeight: "calc(100vh - 57px)" }}>
           {/* Avatar + name */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 20px 20px", background: "linear-gradient(160deg, #bfdbfe 0%, #eff6ff 100%)", borderBottom: "1px solid #bfdbfe" }}>
-            <Avatar name={patient.name} size={56} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 16px 20px", background: "linear-gradient(160deg, #bfdbfe 0%, #eff6ff 100%)", borderBottom: "1px solid #bfdbfe" }}>
+            <Avatar name={patient.name} size={64} />
             <div style={{ color: "#0f172a", fontWeight: 700, fontSize: 16, marginTop: 12, textAlign: "center" }}>{patient.name}</div>
-            <div style={{ marginTop: 6, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20, letterSpacing: "0.04em" }}>{patient.mrn}</div>
+            <div style={{ marginTop: 6, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, letterSpacing: "0.04em" }}>{patient.mrn}</div>
           </div>
           {/* Info rows */}
-          <div style={{ display: "flex", flexDirection: "column", padding: "16px 20px", gap: 14, borderBottom: "1px solid #bfdbfe" }}>
+          <div style={{ display: "flex", flexDirection: "column", padding: "10px 16px", gap: 8, borderBottom: "1px solid #bfdbfe" }}>
             {[
-              { label: "Visit Date", value: patient.date },
-              { label: "Provider", value: patient.provider },
-              { label: "Nurse", value: patient.nurse },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-                <div style={{ fontSize: 13, color: "#1e293b", fontWeight: 600 }}>{value}</div>
+              { label: "Visit Date", value: patient.date, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+              { label: "Provider", value: patient.provider, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+              { label: "Nurse", value: patient.nurse, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+            ].map(({ label, value, icon }) => (
+              <div key={label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                  <div style={{ fontSize: 13, color: "#1e293b", fontWeight: 600, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
+                </div>
               </div>
             ))}
           </div>
           {/* Intake summary */}
           <div style={{ padding: "16px 20px" }}>
             <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "12px 14px", boxShadow: "0 2px 6px rgba(245,158,11,0.12)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                 <span style={{ fontSize: 14 }}>⚡</span>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.06em" }}>Intake Summary</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nurse Intake Notes</div>
               </div>
-              <div style={{ color: "#78350f", fontSize: 12, lineHeight: 1.65 }}>{d.nurseSummary}</div>
+              {d.nurseSummary.map((note, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: i < d.nurseSummary.length - 1 ? "1px dashed #fcd34d" : "none" }}>
+                  <span style={{ fontSize: 14, color: "#b45309", lineHeight: 1.4, flexShrink: 0 }}>•</span>
+                  <span style={{ fontSize: 12, color: "#78350f", lineHeight: 1.6 }}>{note}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
         {/* Right content */}
         <div style={{ flex: 1, padding: "24px 32px" }}>
           {/* Progress + Readiness */}
-          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "8px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Intake Progress</div>
-              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", padding: "0 8px" }}>
-                <div style={{ position: "absolute", top: 11, left: "6%", right: "6%", height: 2, background: "#e2e8f0", zIndex: 0 }} />
-                <div style={{ position: "absolute", top: 11, left: "6%", width: `${Math.max(0, currentStageIdx / (stages.length - 1)) * 88}%`, height: 2, background: "#3b82f6", zIndex: 1 }} />
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Intake Progress</div>
+              <div style={{ position: "relative", display: "flex", padding: "0 6px" }}>
+                <div style={{ position: "absolute", top: 7, left: `${50 / stages.length}%`, right: `${50 / stages.length}%`, height: 2, background: "#e2e8f0", zIndex: 0 }} />
+                <div style={{ position: "absolute", top: 7, left: `${50 / stages.length}%`, width: `${currentStageIdx / (stages.length - 1) * (100 - 100 / stages.length)}%`, height: 2, background: "#3b82f6", zIndex: 1 }} />
                 {stages.map((s, i) => {
                   const done = i <= currentStageIdx;
                   const stageDesc: Record<string, string> = {
@@ -825,18 +993,17 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                   return (
                     <div key={s} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, flex: 1 }}>
                       <Tooltip text={stageDesc[s] ?? s} position="top">
-                        <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#3b82f6" : "#e2e8f0", border: i === currentStageIdx ? "3px solid #bfdbfe" : done ? "none" : "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "default" }}>
-                          {done && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
-                        </div>
+                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: done ? "#3b82f6" : "#e2e8f0", boxShadow: i === currentStageIdx ? "0 0 0 3px #bfdbfe" : "none", cursor: "default" }} />
                       </Tooltip>
-                      <div style={{ fontSize: 10, color: done ? "#2563eb" : "#94a3b8", marginTop: 6, textAlign: "center", fontWeight: done ? 600 : 400, maxWidth: 80 }}>{s}</div>
+                      <div style={{ fontSize: 9, color: done ? "#2563eb" : "#94a3b8", marginTop: 4, textAlign: "center", fontWeight: done ? 600 : 400, maxWidth: 72, lineHeight: 1.3 }}>{s}</div>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 100 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Readiness</div>
+            <div style={{ width: 1, alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Readiness</div>
               <Tooltip text={patient.readiness < 40 ? "Low readiness — action required" : patient.readiness < 70 ? "Moderate readiness — in progress" : "High readiness — visit ready"} position="top">
                 <ReadinessGauge value={patient.readiness} />
               </Tooltip>
@@ -856,15 +1023,72 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                   <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Recent Visits</div>
-                    {d.visits.map((v, i) => <div key={i} style={{ fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>• {v.type} ({v.date})</div>)}
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ background: "#f8fafc" }}>
+                        <tr>
+                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Type</th>
+                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Provider</th>
+                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...d.visits].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((v, i) => (
+                          <tr key={i}>
+                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#374151", borderBottom: "1px solid #f1f5f9" }}>{v.type}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#475569", borderBottom: "1px solid #f1f5f9" }}>{v.provider}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{v.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                   <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Care Gaps</div>
-                    {d.careGaps.map((g, i) => <div key={i} style={{ fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>• {g}</div>)}
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ background: "#f8fafc" }}>
+                        <tr>
+                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Preventive Service</th>
+                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Last Performed</th>
+                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Next Due Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...d.careGaps].sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime()).map((g, i) => (
+                          <tr key={i}>
+                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#374151", borderBottom: "1px solid #f1f5f9" }}>{g.name}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{g.lastPerformed}</td>
+                            {(() => {
+                              const today = new Date(); today.setHours(0, 0, 0, 0);
+                              const due = new Date(g.nextDueDate);
+                              const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+                              const isOverdue = days < 0;
+                              const isDueSoon = days >= 0 && days <= 60;
+                              return (
+                                <td style={{ padding: "4px 8px", fontSize: 12, borderBottom: "1px solid #f1f5f9" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: isOverdue || isDueSoon ? 600 : 400, color: isOverdue ? "#dc2626" : isDueSoon ? "#d97706" : "#64748b" }}>
+                                    {isOverdue && <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fee2e2" stroke="#dc2626" strokeWidth="1" /></svg>}
+                                    {isDueSoon && <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>}
+                                    {g.nextDueDate}
+                                  </span>
+                                </td>
+                              );
+                            })()}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                   <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Complaints</div>
-                    <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>Patient presenting with various medical concerns. Review intake summary for details.</div>
+                    {d.complaints.length === 0
+                      ? <div style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>No complaints recorded.</div>
+                      : d.complaints.map((c, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: i < d.complaints.length - 1 ? "1px dashed #e2e8f0" : "none" }}>
+                          <span style={{ fontSize: 14, color: "#64748b", lineHeight: 1.4, flexShrink: 0 }}>•</span>
+                          <span style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{c}</span>
+                        </div>
+                      ))
+                    }
                   </div>
                 </div>
               </div>
@@ -910,7 +1134,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                   {["BP: 128/82 mmHg", "HR: 72 bpm", "Temp: 98.6°F", "O2: 98% (RA)"].map((v) => <div key={v} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {v}</div>)}
                 </SectionCard>
                 <SectionCard title="Current Medications">
-                  {["Lisinopril 10mg daily", "Metformin 500mg twice daily", "Atorvastatin 20mg daily"].map((m) => <div key={m} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {m}</div>)}
+                  {[...d.medications.reconciled, ...d.medications.unreconciled].map((m) => <div key={m} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {m}</div>)}
                 </SectionCard>
                 <SectionCard title="Allergies">
                   {[...d.allergies.reconciled, ...d.allergies.unreconciled].map((a) => <div key={a} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {a}</div>)}
@@ -918,10 +1142,46 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <SectionCard title="Immunizations">
-                  {["COVID-19 (Moderna) — 01/15/2025", "Influenza (Quad) — 09/20/2024", "Tdap — 02/10/2020"].map((im) => <div key={im} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {im}</div>)}
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead style={{ background: "#f8fafc" }}>
+                      <tr>
+                        {["Vaccine", "Status"].map((h) => <th key={h} style={thS}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...d.immunizations.reconciled.map((v) => ({ vaccine: v, reconciled: true })), ...d.immunizations.unreconciled.map((v) => ({ vaccine: v, reconciled: false }))].map((im) => (
+                        <tr key={im.vaccine}>
+                          <td style={tdS}>{im.vaccine}</td>
+                          <td style={tdS}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: im.reconciled ? "#16a34a" : "#d97706" }}>
+                              {im.reconciled
+                                ? <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#dcfce7" /><path d="M4 7l2.5 2.5L10 5" stroke="#16a34a" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+                                : <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>}
+                              {im.reconciled ? "Reconciled" : "Pending"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </SectionCard>
                 <SectionCard title="Screenings & Labs">
-                  {["Blood Pressure — Normal — 03/15/2025", "Cholesterol — Elevated — 01/20/2025", "CBC — Normal — 03/10/2025"].map((sc) => <div key={sc} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {sc}</div>)}
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead style={{ background: "#f8fafc" }}>
+                      <tr>
+                        {["Test", "Facility", "Date"].map((h) => <th key={h} style={thS}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.screeningsAndLabs.map((sc, i) => (
+                        <tr key={i}>
+                          <td style={tdS}>{sc.test}</td>
+                          <td style={{ ...tdS, color: "#475569" }}>{sc.facility}</td>
+                          <td style={{ ...tdS, color: "#64748b" }}>{sc.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </SectionCard>
               </div>
             </div>
