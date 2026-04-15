@@ -1,8 +1,8 @@
 {
-  "scope": "",
+  "scope": "OR.Tasks OR.Tasks.Write",
   "clientId": "",
-  "orgName": "",
-  "tenantName": "",
-  "baseUrl": "",
+  "orgName": "uspsenablement",
+  "tenantName": "AIFabricEnabled",
+  "baseUrl": "https://staging.uipath.com",
   "redirectUri": ""
 }

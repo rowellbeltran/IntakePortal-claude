@@ -13,9 +13,9 @@ import react from '@vitejs/plugin-react'
 // rollupOptions.output
 //   Predictable, hash-free file names so the UiPath platform can
 //   reference the entry bundle at a stable path (static/js/main.js).
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: './',
+  base: command === 'build' ? './' : '/',
   build: {
     outDir: 'dist',
     assetsDir: 'static',
@@ -31,4 +31,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
