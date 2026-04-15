@@ -1,0 +1,24 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points-fmi-001",
+  "entryPoints": [
+    {
+      "filePath": "index.html",
+      "uniqueId": "b403122c-38ec-4085-a366-8b9d7d1d4a24",
+      "type": "api",
+      "input": {
+        "patientMrn": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        }
+      },
+      "output": {
+        "status": {
+          "type": "string"
+        }
+      }
+    }
+  ]
+}
