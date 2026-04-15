@@ -187,9 +187,9 @@ function statusColor(status: string): string {
   return "#6b7280";
 }
 function roiStatusStyle(status: string): React.CSSProperties {
-  if (status === "Completed") return { color: "#16a34a", fontWeight: 700, fontSize: 12, textTransform: "uppercase" as const, letterSpacing: "0.05em" };
-  if (status === "Sent to Facility") return { color: "#2563eb", fontWeight: 700, fontSize: 12, textTransform: "uppercase" as const, letterSpacing: "0.05em" };
-  return { color: "#dc2626", fontWeight: 700, fontSize: 12, textTransform: "uppercase" as const, letterSpacing: "0.05em", background: "#fee2e2", padding: "3px 8px", borderRadius: 4 };
+  if (status === "Completed") return { color: "#16a34a", background: "#dcfce7", fontWeight: 600, fontSize: 11, padding: "3px 9px", borderRadius: 20 };
+  if (status === "Sent to Facility") return { color: "#2563eb", background: "#dbeafe", fontWeight: 600, fontSize: 11, padding: "3px 9px", borderRadius: 20 };
+  return { color: "#dc2626", background: "#fee2e2", fontWeight: 600, fontSize: 11, padding: "3px 9px", borderRadius: 20 };
 }
 // ============ TOOLTIP ============
 function Tooltip({ text, children, position = "top" }: { text: string; children: React.ReactNode; position?: "top" | "bottom" }): JSX.Element {
@@ -407,7 +407,7 @@ function AuthBanner({ state, onLogin, onLogout }: { state: AuthState; onLogin: (
 // ============ SHARED COMPONENTS ============
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
   return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px" }}>
+    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
       <h3 style={{ margin: "0 0 16px 0", fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{title}</h3>
       {children}
     </div>
@@ -530,12 +530,12 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>Intake Summary</h1>
           <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b" }}>{today}</p>
         </div>
-        <button onClick={() => onNavigateToUpcoming()} style={{ padding: "8px 18px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}>View Queue</button>
+        <button onClick={() => onNavigateToUpcoming()} style={{ padding: "8px 18px", background: "#2563eb", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer", boxShadow: "0 1px 4px rgba(37,99,235,0.25)" }}>View Queue</button>
       </div>
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         {statCards.map((s) => (
-          <div key={s.label} onClick={s.onClick} style={{ background: "#fff", border: "1px solid #e2e8f0", borderLeft: `4px solid ${s.color}`, borderRadius: 8, padding: "18px 20px", cursor: s.onClick ? "pointer" : "default" }}>
+          <div key={s.label} onClick={s.onClick} style={{ background: "#fff", border: "1px solid #e5e7eb", borderTop: `3px solid ${s.color}`, borderRadius: 10, padding: "20px 22px", cursor: s.onClick ? "pointer" : "default", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>{s.label}</div>
             <Tooltip text={s.tooltip} position="bottom">
               <div style={{ fontSize: 32, fontWeight: 700, color: s.color, lineHeight: 1, cursor: "default" }}>{s.value}</div>
@@ -546,15 +546,15 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
       </div>
       {/* Charts row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 16, marginBottom: 24 }}>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px" }}>
+        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Stage Distribution</div>
           <DonutChart data={stageData} total={totalCount} />
         </div>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px" }}>
+        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Status Overview</div>
           <DonutChart data={statusData} total={totalCount} />
         </div>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px" }}>
+        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Weekly Visits — YTD</div>
             <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748b" }}>
@@ -591,7 +591,7 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
       </div>
       {/* Bottom tables */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Nurse Visit Assignments</div>
             <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Today's schedule — click a row to filter queue</div>
@@ -612,7 +612,7 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
             </tbody>
           </table>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Recent ROI Requests</div>
             <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Latest release of information activity</div>
@@ -667,7 +667,7 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{isCompleted ? "Completed Visits" : "Upcoming Visits"}</h1>
         <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b" }}>{isCompleted ? "Review past patient visits" : "Review upcoming visits and manage schedules"}</p>
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 20px", marginBottom: 20 }}>
+      <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Filter Records</div>
           {(search || stageF || statusF || providerF || nurseF) && (
@@ -692,7 +692,7 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
           ))}
         </div>
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+      <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ padding: "10px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", fontSize: 12, color: "#64748b" }}>
           Showing <strong style={{ color: "#0f172a" }}>{filtered.length}</strong> of <strong style={{ color: "#0f172a" }}>{pts.length}</strong> rows
         </div>
@@ -715,8 +715,8 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
                 <td style={{ ...tdS, color: "#475569" }}>{p.date}</td>
                 <td style={{ ...tdS, color: "#475569" }}>{p.provider}</td>
                 <td style={{ ...tdS, color: "#475569" }}>{p.nurse}</td>
-                <td style={tdS}><Tooltip text={{ "Data Prepared": "Data gathered & prepared", "Data Validated": "Verified against source records", "Patient Record Updated": "EMR updated", "Readiness Evaluated": "Fully ready for visit" }[p.stage] ?? p.stage} position="bottom"><span style={{ color: stageColors[p.stage] || "#6b7280", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "default" }}>{p.stage.toUpperCase()}</span></Tooltip></td>
-                <td style={tdS}><Tooltip text={{ "New": "Intake not yet started", "In Progress": "Intake currently underway", "Completed": "Intake fully completed" }[p.status] ?? p.status} position="bottom"><span style={{ color: statusColor(p.status), fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "default" }}>{p.status.toUpperCase()}</span></Tooltip></td>
+                <td style={tdS}><Tooltip text={{ "Data Prepared": "Data gathered & prepared", "Data Validated": "Verified against source records", "Patient Record Updated": "EMR updated", "Readiness Evaluated": "Fully ready for visit" }[p.stage] ?? p.stage} position="bottom"><span style={{ color: stageColors[p.stage] || "#6b7280", background: (stageColors[p.stage] || "#6b7280") + "18", fontWeight: 600, fontSize: 11, padding: "3px 9px", borderRadius: 20, cursor: "default" }}>{p.stage}</span></Tooltip></td>
+                <td style={tdS}><Tooltip text={{ "New": "Intake not yet started", "In Progress": "Intake currently underway", "Completed": "Intake fully completed" }[p.status] ?? p.status} position="bottom"><span style={{ color: statusColor(p.status), background: statusColor(p.status) + "18", fontWeight: 600, fontSize: 11, padding: "3px 9px", borderRadius: 20, cursor: "default" }}>{p.status}</span></Tooltip></td>
                 <td style={tdS}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 100 }}>
                     <div style={{ flex: 1, height: 5, background: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}>
@@ -808,7 +808,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
         {/* Right content */}
         <div style={{ flex: 1, padding: "24px 32px" }}>
           {/* Progress + Readiness */}
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
+          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Intake Progress</div>
               <div style={{ position: "relative", display: "flex", justifyContent: "space-between", padding: "0 8px" }}>
@@ -851,7 +851,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
           {/* Intake tab */}
           {activeTab === "intake" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px" }}>
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Clinical Information</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                   <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
@@ -868,7 +868,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                   </div>
                 </div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px" }}>
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Reconciliation Status</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                   {[
@@ -930,7 +930,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
           {activeTab === "roi" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {isAuthenticated && (
-                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 20px" }}>
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Action Center Tasks <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>live</span></span>
                     <button onClick={liveRefresh} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 12, padding: "3px 10px", cursor: "pointer", color: "#475569" }}>↻</button>
@@ -946,7 +946,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                   ))}
                 </div>
               )}
-              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Release of Information Requests</div>
                   {patient.status !== "Completed" && (
@@ -1011,7 +1011,7 @@ function CreateROIPage({ patient, authState, onBack, onSubmit }: {
     onSubmit({ id: taskId ?? Date.now(), facility: facilityName, requestedDate: new Date().toISOString().split("T")[0], status: roiType });
     setSubmitting(false);
   };
-  const secStyle: React.CSSProperties = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px", marginBottom: 16 };
+  const secStyle: React.CSSProperties = { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", marginBottom: 16 };
   const secTitle: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 16 };
   const grid2: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" };
   const grid3: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 24px" };
