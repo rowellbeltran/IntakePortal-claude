@@ -191,6 +191,36 @@ function roiStatusStyle(status: string): React.CSSProperties {
   if (status === "Sent to Facility") return { color: "#2563eb", fontWeight: 700, fontSize: 12, textTransform: "uppercase" as const, letterSpacing: "0.05em" };
   return { color: "#dc2626", fontWeight: 700, fontSize: 12, textTransform: "uppercase" as const, letterSpacing: "0.05em", background: "#fee2e2", padding: "3px 8px", borderRadius: 4 };
 }
+// ============ TOOLTIP ============
+function Tooltip({ text, children, position = "top" }: { text: string; children: React.ReactNode; position?: "top" | "bottom" }): JSX.Element {
+  const [visible, setVisible] = useState(false);
+  const isTop = position !== "bottom";
+  return (
+    <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
+      onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+      {children}
+      {visible && (
+        <div style={{
+          position: "absolute",
+          ...(isTop ? { bottom: "calc(100% + 7px)" } : { top: "calc(100% + 7px)" }),
+          left: "50%", transform: "translateX(-50%)",
+          background: "#1e293b", color: "#f1f5f9", fontSize: 11, fontWeight: 500,
+          padding: "5px 10px", borderRadius: 6, whiteSpace: "nowrap",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.25)", zIndex: 9999, pointerEvents: "none",
+          lineHeight: 1.5,
+        }}>
+          {text}
+          <div style={{
+            position: "absolute",
+            ...(isTop ? { top: "100%", borderTopColor: "#1e293b", borderTopWidth: 5, borderBottomWidth: 0 } : { bottom: "100%", borderBottomColor: "#1e293b", borderBottomWidth: 5, borderTopWidth: 0 }),
+            left: "50%", transform: "translateX(-50%)",
+            border: "5px solid transparent",
+          }} />
+        </div>
+      )}
+    </div>
+  );
+}
 // ============ DONUT CHART ============
 function DonutChart({ data, total }: { data: PieChartData[]; total: number }): JSX.Element {
   const r = 32, cx = 42, cy = 42;
@@ -220,10 +250,12 @@ function DonutChart({ data, total }: { data: PieChartData[]; total: number }): J
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         {data.map((item) => (
-          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: "#475569" }}><strong style={{ color: "#1e293b" }}>{item.value}</strong> {item.label}</span>
-          </div>
+          <Tooltip key={item.label} text={`${total > 0 ? Math.round((item.value / total) * 100) : 0}% of total`} position="top">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, cursor: "default" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: "#475569" }}><strong style={{ color: "#1e293b" }}>{item.value}</strong> {item.label}</span>
+            </div>
+          </Tooltip>
         ))}
       </div>
     </div>
@@ -240,13 +272,13 @@ function ReadinessGauge({ value }: { value: number }): JSX.Element {
   const endRad = (angle * Math.PI) / 180;
   const arcX = cx + r * Math.cos(endRad);
   const arcY = cy + r * Math.sin(endRad);
-  const largeArc = value > 50 ? 1 : 0;
+  const largeArc = 0;
   const needleRad = endRad;
   const needleX = cx + (r - 6) * Math.cos(needleRad);
   const needleY = cy + (r - 6) * Math.sin(needleRad);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg width={100} height={58} viewBox="0 0 100 58">
+      <svg width={80} height={46} viewBox="0 0 100 58">
         <path d={`M ${startX} ${startY} A ${r} ${r} 0 0 1 ${endX} ${startY}`} fill="none" stroke="#e5e7eb" strokeWidth={6} strokeLinecap="round" />
         {value > 0 && (
           <path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${arcX.toFixed(2)} ${arcY.toFixed(2)}`} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round" />
@@ -484,10 +516,10 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
     { label: "Completed", value: completedCount, color: "#22c55e" }
   ];
   const statCards = [
-    { label: "Total Patients", value: totalCount, sub: "All records", color: "#94a3b8", onClick: undefined as (() => void) | undefined },
-    { label: "Upcoming", value: upcomingCount, sub: "Awaiting intake", color: "#3b82f6", onClick: () => onNavigateToUpcoming() },
-    { label: "In Progress", value: inProgressCount, sub: "Active today", color: "#f59e0b", onClick: () => onNavigateToUpcoming() },
-    { label: "Completed", value: completedCount, sub: "Intake done", color: "#22c55e", onClick: () => onNavigateToCompleted() },
+    { label: "Total Patients", value: totalCount, sub: "All records", color: "#94a3b8", tooltip: "All patients currently in the system", onClick: undefined as (() => void) | undefined },
+    { label: "Upcoming", value: upcomingCount, sub: "Awaiting intake", color: "#3b82f6", tooltip: "Patients not yet completed — click to open queue", onClick: () => onNavigateToUpcoming() },
+    { label: "In Progress", value: inProgressCount, sub: "Active today", color: "#f59e0b", tooltip: "Intake sessions currently active today", onClick: () => onNavigateToUpcoming() },
+    { label: "Completed", value: completedCount, sub: "Intake done", color: "#22c55e", tooltip: "Patients with fully completed intake — click to view", onClick: () => onNavigateToCompleted() },
   ];
   const thS: React.CSSProperties = { padding: "10px 14px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#64748b", borderBottom: "1px solid #e2e8f0" };
   const tdS: React.CSSProperties = { padding: "12px 14px", fontSize: 13, color: "#374151", borderBottom: "1px solid #f1f5f9" };
@@ -505,7 +537,9 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
         {statCards.map((s) => (
           <div key={s.label} onClick={s.onClick} style={{ background: "#fff", border: "1px solid #e2e8f0", borderLeft: `4px solid ${s.color}`, borderRadius: 8, padding: "18px 20px", cursor: s.onClick ? "pointer" : "default" }}>
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontSize: 32, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
+            <Tooltip text={s.tooltip} position="bottom">
+              <div style={{ fontSize: 32, fontWeight: 700, color: s.color, lineHeight: 1, cursor: "default" }}>{s.value}</div>
+            </Tooltip>
             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>{s.sub}</div>
           </div>
         ))}
@@ -570,9 +604,9 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
                   onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "#f8fafc")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "transparent")}>
                   <td style={tdS}>{nurse}</td>
-                  <td style={{ ...tdS, textAlign: "center" }}><span style={{ color: s.pending > 0 ? "#ef4444" : "#22c55e", fontWeight: 700 }}>{s.pending}</span></td>
-                  <td style={{ ...tdS, textAlign: "center" }}><span style={{ color: "#22c55e", fontWeight: 700 }}>{s.completed}</span></td>
-                  <td style={{ ...tdS, textAlign: "center" }}><span style={{ color: "#3b82f6", fontWeight: 700 }}>{s.total}</span></td>
+                  <td style={{ ...tdS, textAlign: "center" }}><Tooltip text={s.pending > 0 ? `${s.pending} visit${s.pending > 1 ? "s" : ""} not yet started` : "All visits started"} position="top"><span style={{ color: s.pending > 0 ? "#ef4444" : "#22c55e", fontWeight: 700, cursor: "default" }}>{s.pending}</span></Tooltip></td>
+                  <td style={{ ...tdS, textAlign: "center" }}><Tooltip text={`${s.completed} visit${s.completed !== 1 ? "s" : ""} finished today`} position="top"><span style={{ color: "#22c55e", fontWeight: 700, cursor: "default" }}>{s.completed}</span></Tooltip></td>
+                  <td style={{ ...tdS, textAlign: "center" }}><Tooltip text={`${s.total} total visit${s.total !== 1 ? "s" : ""} assigned today`} position="top"><span style={{ color: "#3b82f6", fontWeight: 700, cursor: "default" }}>{s.total}</span></Tooltip></td>
                 </tr>
               ))}
             </tbody>
@@ -593,7 +627,7 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
                   <td style={{ ...tdS, fontWeight: 600, color: "#0f172a" }}>{roi.patient}</td>
                   <td style={tdS}>{roi.facility}</td>
                   <td style={{ ...tdS, color: "#64748b" }}>{roi.requestedDate}</td>
-                  <td style={tdS}><span style={roiStatusStyle(roi.status)}>{roi.status.toUpperCase()}</span></td>
+                  <td style={tdS}><Tooltip text={{ "Completed": "Records successfully released", "Sent to Facility": "Request sent, awaiting acknowledgment" }[roi.status] ?? "Pending release or action needed"} position="top"><span style={roiStatusStyle(roi.status)}>{roi.status.toUpperCase()}</span></Tooltip></td>
                 </tr>
               ))}
             </tbody>
@@ -624,7 +658,7 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
       && (!nurseF || p.nurse === nurseF);
   });
   const uniq = <T,>(arr: T[]): T[] => [...new Set(arr)];
-  const selStyle: React.CSSProperties = { ...inputCss, minWidth: 130 };
+  const selStyle: React.CSSProperties = { ...inputCss, width: "auto", minWidth: 160, flex: "1 1 160px" };
   const thS: React.CSSProperties = { padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "2px solid #e2e8f0" };
   const tdS: React.CSSProperties = { padding: "12px 14px", borderBottom: "1px solid #f1f5f9", fontSize: 13 };
   return (
@@ -634,7 +668,15 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
         <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b" }}>{isCompleted ? "Review past patient visits" : "Review upcoming visits and manage schedules"}</p>
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 20px", marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Filter Records</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Filter Records</div>
+          {(search || stageF || statusF || providerF || nurseF) && (
+            <button onClick={() => { setSearch(""); setStageF(""); setStatusF(""); setProviderF(""); setNurseF(""); }}
+              style={{ fontSize: 12, fontWeight: 600, color: "#3b82f6", background: "none", border: "none", cursor: "pointer", padding: "2px 6px", borderRadius: 4 }}>
+              Clear filters
+            </button>
+          )}
+        </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <input placeholder="Name, MRN, or Nurse..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inputCss, minWidth: 200, flex: "1 1 200px" }} />
           {([
@@ -651,6 +693,9 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
         </div>
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ padding: "10px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", fontSize: 12, color: "#64748b" }}>
+          Showing <strong style={{ color: "#0f172a" }}>{filtered.length}</strong> of <strong style={{ color: "#0f172a" }}>{pts.length}</strong> rows
+        </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ background: "#f8fafc" }}>
             <tr>{["MRN", "Patient", "Date", "Provider", "Nurse", "Stage", "Status", "Readiness"].map((h) => <th key={h} style={thS}>{h}</th>)}</tr>
@@ -670,8 +715,8 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
                 <td style={{ ...tdS, color: "#475569" }}>{p.date}</td>
                 <td style={{ ...tdS, color: "#475569" }}>{p.provider}</td>
                 <td style={{ ...tdS, color: "#475569" }}>{p.nurse}</td>
-                <td style={tdS}><span style={{ color: stageColors[p.stage] || "#6b7280", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>{p.stage.toUpperCase()}</span></td>
-                <td style={tdS}><span style={{ color: statusColor(p.status), fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>{p.status.toUpperCase()}</span></td>
+                <td style={tdS}><Tooltip text={{ "Data Prepared": "Data gathered & prepared", "Data Validated": "Verified against source records", "Patient Record Updated": "EMR updated", "Readiness Evaluated": "Fully ready for visit" }[p.stage] ?? p.stage} position="bottom"><span style={{ color: stageColors[p.stage] || "#6b7280", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "default" }}>{p.stage.toUpperCase()}</span></Tooltip></td>
+                <td style={tdS}><Tooltip text={{ "New": "Intake not yet started", "In Progress": "Intake currently underway", "Completed": "Intake fully completed" }[p.status] ?? p.status} position="bottom"><span style={{ color: statusColor(p.status), fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "default" }}>{p.status.toUpperCase()}</span></Tooltip></td>
                 <td style={tdS}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 100 }}>
                     <div style={{ flex: 1, height: 5, background: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}>
@@ -729,43 +774,61 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
       </div>
       <div style={{ display: "flex" }}>
         {/* Left patient card */}
-        <div style={{ width: 220, flexShrink: 0, background: "linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)", padding: "28px 20px", display: "flex", flexDirection: "column", minHeight: "calc(100vh - 57px)" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 }}>
-            <Avatar name={patient.name} size={52} />
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 17, marginTop: 12, textAlign: "center" }}>{patient.name}</div>
+        <div style={{ width: 240, flexShrink: 0, background: "#eff6ff", borderRight: "1px solid #bfdbfe", display: "flex", flexDirection: "column", gap: 0, minHeight: "calc(100vh - 57px)" }}>
+          {/* Avatar + name */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 20px 20px", background: "linear-gradient(160deg, #bfdbfe 0%, #eff6ff 100%)", borderBottom: "1px solid #bfdbfe" }}>
+            <Avatar name={patient.name} size={56} />
+            <div style={{ color: "#0f172a", fontWeight: 700, fontSize: 16, marginTop: 12, textAlign: "center" }}>{patient.name}</div>
+            <div style={{ marginTop: 6, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20, letterSpacing: "0.04em" }}>{patient.mrn}</div>
           </div>
-          {[
-            { label: "MRN", value: patient.mrn },
-            { label: "Visit Date", value: patient.date },
-            { label: "Provider", value: patient.provider },
-            { label: "Nurse", value: patient.nurse }
-          ].map(({ label, value }) => (
-            <div key={label} style={{ borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 12, paddingBottom: 12 }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3, fontWeight: 700 }}>{label}</div>
-              <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{value}</div>
+          {/* Info rows */}
+          <div style={{ display: "flex", flexDirection: "column", padding: "16px 20px", gap: 14, borderBottom: "1px solid #bfdbfe" }}>
+            {[
+              { label: "Visit Date", value: patient.date },
+              { label: "Provider", value: patient.provider },
+              { label: "Nurse", value: patient.nurse },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                <div style={{ fontSize: 13, color: "#1e293b", fontWeight: 600 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          {/* Intake summary */}
+          <div style={{ padding: "16px 20px" }}>
+            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "12px 14px", boxShadow: "0 2px 6px rgba(245,158,11,0.12)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <span style={{ fontSize: 14 }}>⚡</span>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.06em" }}>Intake Summary</div>
+              </div>
+              <div style={{ color: "#78350f", fontSize: 12, lineHeight: 1.65 }}>{d.nurseSummary}</div>
             </div>
-          ))}
-          <div style={{ marginTop: 8, background: "linear-gradient(135deg, #f97316, #ea580c)", borderRadius: 8, padding: "12px 14px" }}>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700, marginBottom: 6 }}>⚡ Intake Summary</div>
-            <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5 }}>{d.nurseSummary}</div>
           </div>
         </div>
         {/* Right content */}
         <div style={{ flex: 1, padding: "24px 32px" }}>
           {/* Progress + Readiness */}
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "flex-start", gap: 24 }}>
+          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 18 }}>Intake Progress</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Intake Progress</div>
               <div style={{ position: "relative", display: "flex", justifyContent: "space-between", padding: "0 8px" }}>
                 <div style={{ position: "absolute", top: 11, left: "6%", right: "6%", height: 2, background: "#e2e8f0", zIndex: 0 }} />
                 <div style={{ position: "absolute", top: 11, left: "6%", width: `${Math.max(0, currentStageIdx / (stages.length - 1)) * 88}%`, height: 2, background: "#3b82f6", zIndex: 1 }} />
                 {stages.map((s, i) => {
                   const done = i <= currentStageIdx;
+                  const stageDesc: Record<string, string> = {
+                    "Data Prepared": "Patient data has been gathered and prepared",
+                    "Data Validated": "Data verified against source records",
+                    "Patient Record Updated": "EMR updated with validated information",
+                    "Readiness Evaluated": "Patient is fully ready for visit",
+                  };
                   return (
                     <div key={s} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, flex: 1 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#3b82f6" : "#e2e8f0", border: i === currentStageIdx ? "3px solid #bfdbfe" : done ? "none" : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {done && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
-                      </div>
+                      <Tooltip text={stageDesc[s] ?? s} position="top">
+                        <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#3b82f6" : "#e2e8f0", border: i === currentStageIdx ? "3px solid #bfdbfe" : done ? "none" : "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "default" }}>
+                          {done && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
+                        </div>
+                      </Tooltip>
                       <div style={{ fontSize: 10, color: done ? "#2563eb" : "#94a3b8", marginTop: 6, textAlign: "center", fontWeight: done ? 600 : 400, maxWidth: 80 }}>{s}</div>
                     </div>
                   );
@@ -774,7 +837,9 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 100 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Readiness</div>
-              <ReadinessGauge value={patient.readiness} />
+              <Tooltip text={patient.readiness < 40 ? "Low readiness — action required" : patient.readiness < 70 ? "Moderate readiness — in progress" : "High readiness — visit ready"} position="top">
+                <ReadinessGauge value={patient.readiness} />
+              </Tooltip>
             </div>
           </div>
           {/* Tabs */}
@@ -819,7 +884,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                             <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#dcfce7" /><path d="M4 7l2.5 2.5L10 5" stroke="#16a34a" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
                             <span style={{ fontSize: 13, color: "#374151" }}>{item}</span>
                           </div>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a" }}>Reconciled</span>
+                          <Tooltip text="Verified against EMR records" position="top"><span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", cursor: "default" }}>Reconciled</span></Tooltip>
                         </div>
                       ))}
                       {data.unreconciled.map((item) => (
@@ -828,7 +893,7 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
                             <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>
                             <span style={{ fontSize: 13, color: "#374151" }}>{item}</span>
                           </div>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#d97706" }}>Pending</span>
+                          <Tooltip text="Awaiting verification or provider review" position="top"><span style={{ fontSize: 11, fontWeight: 700, color: "#d97706", cursor: "default" }}>Pending</span></Tooltip>
                         </div>
                       ))}
                     </div>
