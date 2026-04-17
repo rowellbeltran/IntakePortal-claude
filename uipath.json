@@ -1,8 +1,8 @@
 {
-  "scope": "OR.Tasks OR.Tasks.Write",
+  "scope": "OR.Tasks OR.Tasks.Write DataFabric.Default",
   "clientId": "",
   "orgName": "uspsenablement",
   "tenantName": "AIFabricEnabled",
   "baseUrl": "https://staging.uipath.com",
-  "redirectUri": ""
+  "redirectUri": "https://uspsenablement.staging.uipath.host/fmintake"
 }

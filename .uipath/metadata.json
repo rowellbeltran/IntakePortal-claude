@@ -1,8 +1,8 @@
 {
   "name": "fmi-app",
-  "version": "1.0.5",
-  "description": "FMI Coded App - New",
+  "version": "1.0.7",
+  "description": "fmi-app",
   "author": "UiPath Developer",
   "contentType": "webapp",
-  "createdAt": "2026-04-15T23:20:27.365Z"
+  "createdAt": "2026-04-17T20:14:02.234Z"
 }

@@ -3,333 +3,9 @@ import { Tasks, TaskPriority, type TaskGetResponse } from "@uipath/uipath-typesc
 import { useAuth, type AuthState } from "./hooks/useAuth";
 import { usePolling } from "./hooks/usePolling";
 import { sdk, ENV, isConfigured } from "./lib/sdk";
-// ============ TYPES ============
-interface Patient {
-  id: number; name: string; mrn: string; date: string; provider: string;
-  nurse: string; stage: string; status: string; exception: string; readiness: number;
-}
-interface Visit { type: string; date: string; provider: string; }
-interface ReconcilableItem { reconciled: string[]; unreconciled: string[]; }
-interface CareGap { name: string; lastPerformed: string; nextDueDate: string; }
-interface ScreeningLab { test: string; facility: string; date: string; }
-interface PatientDetail {
-  visits: Visit[]; allergies: ReconcilableItem; medications: ReconcilableItem;
-  immunizations: ReconcilableItem; careGaps: CareGap[]; screeningsAndLabs: ScreeningLab[]; nurseSummary: string[]; complaints: string[]; roi: ROI[];
-}
-interface ROI { id: number; facility: string; requestedDate: string; status: string; patient?: string; }
-interface VisitToday { id: number; patient: string; time: string; provider: string; nurse: string; status: string; }
-interface WeeklyVisit { week: string; visits: number; aht: number; }
-interface PieChartData { label: string; value: number; color: string; }
-interface RecordsState extends Record<string, boolean | string> {
-  behavioralHealth: boolean; emergencyDept: boolean; operativeNotes: boolean;
-  providerNotes: boolean; therapyNotes: boolean; otherDocument: string;
-}
-interface AdditionalState extends Record<string, boolean | string> {
-  allergyList: boolean; immunizations: boolean; medicationList: boolean; labResults: boolean;
-  hivLab: boolean; geneticTesting: boolean; pathology: boolean; ekg: boolean;
-  radiologyReport: boolean; radiologyImages: boolean; billingInfo: boolean;
-}
-interface SubstanceState extends Record<string, boolean | string> {
-  assessment: boolean; historyPhysical: boolean; multidisciplinaryNotes: boolean;
-  familyParticipation: boolean; questionnaires: boolean; treatmentSummary: boolean;
-  treatmentPlans: boolean; other: string;
-}
-// ============ DATA ============
-const patients: Patient[] = [
-  { id: 1, name: "John Doe", mrn: "MRN-001", date: "2026-04-10", provider: "Dr. Smith", nurse: "Sarah Johnson, RN", stage: "Data Prepared", status: "New", exception: "None", readiness: 25 },
-  { id: 2, name: "Jane Roe", mrn: "MRN-002", date: "2026-04-11", provider: "Dr. Adams", nurse: "Michael Chen, RN", stage: "Data Validated", status: "In Progress", exception: "Missing Labs", readiness: 60 },
-  { id: 3, name: "Michael Lee", mrn: "MRN-003", date: "2026-04-05", provider: "Dr. Brown", nurse: "Emily Rodriguez, RN", stage: "Data Prepared", status: "New", exception: "None", readiness: 45 },
-  { id: 4, name: "Sarah Johnson", mrn: "MRN-004", date: "2026-04-12", provider: "Dr. Wilson", nurse: "James Patterson, RN", stage: "Data Validated", status: "In Progress", exception: "Insurance Verification", readiness: 55 },
-  { id: 5, name: "Robert Martinez", mrn: "MRN-005", date: "2026-04-13", provider: "Dr. Garcia", nurse: "Lisa Wong, RN", stage: "Data Validated", status: "In Progress", exception: "None", readiness: 75 },
-  { id: 6, name: "Emily Chen", mrn: "MRN-006", date: "2026-04-14", provider: "Dr. Taylor", nurse: "David Kumar, RN", stage: "Patient Record Updated", status: "In Progress", exception: "Pending Approval", readiness: 50 },
-  { id: 7, name: "David Thompson", mrn: "MRN-007", date: "2026-04-15", provider: "Dr. Anderson", nurse: "Jennifer Lee, RN", stage: "Data Prepared", status: "New", exception: "None", readiness: 20 },
-  { id: 8, name: "Lisa Anderson", mrn: "MRN-008", date: "2026-04-16", provider: "Dr. Martinez", nurse: "Robert Thompson, RN", stage: "Data Validated", status: "In Progress", exception: "Lab Results Pending", readiness: 65 },
-  { id: 9, name: "Kevin Wilson", mrn: "MRN-017", date: "2026-04-17", provider: "Dr. Harris", nurse: "Sarah Johnson, RN", stage: "Data Prepared", status: "New", exception: "None", readiness: 30 },
-  { id: 10, name: "Patricia Brown", mrn: "MRN-018", date: "2026-04-18", provider: "Dr. Clark", nurse: "Michael Chen, RN", stage: "Data Validated", status: "In Progress", exception: "Insurance Pending", readiness: 55 },
-  { id: 11, name: "James Wilson", mrn: "MRN-009", date: "2026-04-04", provider: "Dr. Harris", nurse: "Sarah Johnson, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 12, name: "Patricia Moore", mrn: "MRN-010", date: "2026-04-03", provider: "Dr. Clark", nurse: "Michael Chen, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 13, name: "Christopher Davis", mrn: "MRN-011", date: "2026-04-02", provider: "Dr. Lewis", nurse: "Emily Rodriguez, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 14, name: "Jennifer Martinez", mrn: "MRN-012", date: "2026-04-01", provider: "Dr. Walker", nurse: "James Patterson, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 15, name: "Daniel Rodriguez", mrn: "MRN-013", date: "2026-03-31", provider: "Dr. Young", nurse: "Lisa Wong, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 16, name: "Maria Garcia", mrn: "MRN-014", date: "2026-03-30", provider: "Dr. Hernandez", nurse: "David Kumar, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 17, name: "Thomas Anderson", mrn: "MRN-015", date: "2026-03-29", provider: "Dr. Lopez", nurse: "Jennifer Lee, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 },
-  { id: 18, name: "Angela Thomas", mrn: "MRN-016", date: "2026-03-28", provider: "Dr. Martinez", nurse: "Robert Thompson, RN", stage: "Readiness Evaluated", status: "Completed", exception: "None", readiness: 100 }
-];
-const defaultDetails: PatientDetail = {
-  visits: [], allergies: { reconciled: [], unreconciled: [] }, medications: { reconciled: [], unreconciled: [] },
-  immunizations: { reconciled: [], unreconciled: [] }, careGaps: [], screeningsAndLabs: [], nurseSummary: ["No intake data available."], complaints: [], roi: []
-};
-const patientDetails: Record<number, PatientDetail> = {
-  1: {
-    visits: [{ type: "Pulmonary", date: "2025-12-01", provider: "Dr. Smith" }, { type: "Cardiology", date: "2025-11-15", provider: "Dr. Patel" }, { type: "General Checkup", date: "2025-10-20", provider: "Dr. Smith" }],
-    allergies: { reconciled: ["Peanuts", "Latex", "Sulfa"], unreconciled: ["Penicillin", "Shellfish"] },
-    medications: { reconciled: ["Metformin", "Atorvastatin"], unreconciled: ["Lisinopril", "Aspirin"] },
-    immunizations: { reconciled: ["Flu Shot", "Pneumonia"], unreconciled: ["COVID Booster", "Shingles"] },
-    careGaps: [{ name: "Annual Physical", lastPerformed: "2024-03-10", nextDueDate: "2026-03-10" }, { name: "Blood Pressure Check", lastPerformed: "2025-01-22", nextDueDate: "2026-01-22" }, { name: "Cholesterol Screening", lastPerformed: "2024-08-15", nextDueDate: "2026-05-20" }],
-    screeningsAndLabs: [
-      { test: "Blood Pressure", facility: "Main Clinic", date: "2026-02-10" },
-      { test: "CBC", facility: "Main Clinic", date: "2025-09-05" },
-      { test: "Cholesterol Panel", facility: "Lab Corp", date: "2025-04-18" },
-      { test: "Blood Pressure", facility: "Main Clinic", date: "2024-11-20" },
-      { test: "HbA1c", facility: "Lab Corp", date: "2024-06-12" },
-    ],
-    nurseSummary: [
-      "Meds: Pt. states taking Metformin + Atorvastatin as prescribed. Lisinopril + Aspirin unreconciled — unable to confirm; follow up with PCP.",
-      "Allergies: Penicillin + Shellfish reported unverified — pt. confirmed allergic to both. Chart updated.",
-      "Vitals: BP 138/86 at intake — slightly elevated, flagged for provider. HR 74, Temp 98.4°F.",
-      "Vaccines: COVID Booster + Shingles not yet received per pt. — referral to pharmacy placed.",
-      "Care Gaps: Annual Physical overdue since 03/2024 — pt. unaware; PCP referral placed. BP check completed today.",
-      "Pt. denies chest pain or SOB today. C/o mild bilateral ankle swelling x2 wks — noted for provider review.",
-    ],
-    complaints: [
-      "Bilateral ankle swelling x2 weeks, pitting noted on left > right",
-      "Exertional shortness of breath — occurs with climbing >1 flight of stairs",
-      "Afternoon fatigue, difficulty completing ADLs by mid-day",
-      "Occasional mild chest tightness at rest — denies radiation to arm/jaw",
-    ],
-    roi: [
-      { id: 1, facility: "General Hospital", requestedDate: "2026-04-08", status: "Signature Pending" },
-      { id: 2, facility: "City Clinic", requestedDate: "2026-04-07", status: "Sent to Facility" }
-    ]
-  },
-  2: {
-    visits: [{ type: "Cardiology", date: "2025-11-15", provider: "Dr. Adams" }, { type: "General Checkup", date: "2025-10-20", provider: "Dr. Adams" }, { type: "Dermatology", date: "2025-09-10", provider: "Dr. Lee" }],
-    allergies: { reconciled: ["Sulfa", "NSAIDs"], unreconciled: ["Latex", "Penicillin"] },
-    medications: { reconciled: ["Atorvastatin", "Ibuprofen"], unreconciled: ["Aspirin", "Metformin"] },
-    immunizations: { reconciled: ["Pneumonia", "Flu Shot"], unreconciled: ["Shingles", "COVID Booster"] },
-    careGaps: [{ name: "Blood Pressure Check", lastPerformed: "2025-02-10", nextDueDate: "2026-02-10" }, { name: "Cholesterol Screening", lastPerformed: "2024-07-18", nextDueDate: "2026-05-10" }, { name: "Skin Cancer Screening", lastPerformed: "2023-11-05", nextDueDate: "2026-05-01" }],
-    screeningsAndLabs: [
-      { test: "Lipid Panel", facility: "Heart Center", date: "2026-01-14" },
-      { test: "Blood Pressure", facility: "Main Clinic", date: "2025-08-22" },
-      { test: "ECG", facility: "Heart Center", date: "2025-03-09" },
-      { test: "Cholesterol Panel", facility: "Lab Corp", date: "2024-09-30" },
-      { test: "Blood Pressure", facility: "Main Clinic", date: "2024-05-17" },
-    ],
-    nurseSummary: [
-      "Meds: Atorvastatin + Ibuprofen active. ⚠ Pt. has NSAIDs allergy — confirmed NOT taking Ibuprofen; flagged for provider. Aspirin + Metformin unreconciled.",
-      "Allergies: Latex + Penicillin unverified — pt. reports h/o mild rash with Penicillin. Latex sensitivity noted, gloves changed. Chart updated.",
-      "Vitals: BP 126/82 — within baseline. HR 68, Temp 98.2°F.",
-      "Vaccines: Shingles + COVID Booster not received per pt. — scheduled at next pharmacy visit.",
-      "Care Gaps: BP check completed today. Skin Cancer Screening due 05/2026 — pt. denies new lesions; referred to Dermatology.",
-      "Pt. c/o intermittent palpitations x1 wk, no dizziness. Denies skin changes. Noted for cardiology review.",
-    ],
-    complaints: [
-      "Intermittent heart palpitations x1 week — episodes lasting ~30 seconds, no syncope",
-      "New pigmented mole on left forearm, noticed ~3 weeks ago; no bleeding or itching reported",
-      "Occasional dizziness on standing from seated position, resolves within seconds",
-    ],
-    roi: [{ id: 3, facility: "Heart Center", requestedDate: "2026-04-06", status: "Completed" }]
-  },
-  3: {
-    visits: [{ type: "Orthopedic", date: "2025-09-30", provider: "Dr. Brown" }, { type: "Physical Therapy", date: "2025-10-15", provider: "Dr. Brown" }],
-    allergies: { reconciled: ["NSAIDs"], unreconciled: ["Sulfa", "Shellfish"] },
-    medications: { reconciled: ["Ibuprofen"], unreconciled: ["Metformin", "Atorvastatin"] },
-    immunizations: { reconciled: ["Flu Shot", "COVID Booster"], unreconciled: ["Pneumonia"] },
-    careGaps: [{ name: "Physical Therapy", lastPerformed: "2025-10-15", nextDueDate: "2026-04-15" }, { name: "Annual Physical", lastPerformed: "2024-06-20", nextDueDate: "2026-06-10" }],
-    screeningsAndLabs: [
-      { test: "X-Ray (Knee)", facility: "Orthopedic Center", date: "2025-09-30" },
-      { test: "CBC", facility: "Main Clinic", date: "2025-05-14" },
-      { test: "X-Ray (Knee)", facility: "Orthopedic Center", date: "2024-10-08" },
-      { test: "Metabolic Panel", facility: "Lab Corp", date: "2024-06-20" },
-    ],
-    nurseSummary: [
-      "Meds: Ibuprofen active. Metformin + Atorvastatin unreconciled — pt. unsure if still prescribed; will follow up with PCP for clarification.",
-      "Allergies: Sulfa + Shellfish unverified — pt. confirmed h/o hives with Sulfa. Shellfish — pt. unsure; documented as unverified.",
-      "Vitals: BP 118/76, HR 80, Temp 98.6°F. Pain level 4/10 (right knee).",
-      "Vaccines: Pneumonia vaccine not received post-op per pt. — scheduled at next visit.",
-      "Care Gaps: PT attendance confirmed — attended 3 of last 4 sessions. Annual Physical due 06/2026 — PCP appointment not yet booked.",
-      "Pt. c/o right knee stiffness in AM, improving throughout day. No redness or warmth at surgical site. Home PT exercises done 3x/wk per pt.",
-    ],
-    complaints: [
-      "Right knee pain rated 4/10 at rest, 7/10 with activity; worsens on stair climbing",
-      "Morning stiffness lasting ~30 minutes, improving with movement",
-      "Difficulty fully extending right knee — limited ROM noted",
-      "Mild generalized fatigue following physical therapy sessions",
-    ],
-    roi: []
-  },
-  4: {
-    visits: [{ type: "General Checkup", date: "2025-10-05", provider: "Dr. Martinez" }, { type: "Neurology", date: "2025-09-20", provider: "Dr. Chen" }],
-    allergies: { reconciled: ["Penicillin", "Codeine"], unreconciled: ["Latex"] },
-    medications: { reconciled: ["Gabapentin", "Levothyroxine"], unreconciled: ["Sertraline"] },
-    immunizations: { reconciled: ["Flu Shot"], unreconciled: ["COVID Booster", "Pneumonia", "Shingles"] },
-    careGaps: [{ name: "Thyroid Function Test", lastPerformed: "2024-12-01", nextDueDate: "2026-06-01" }, { name: "Mental Health Screening", lastPerformed: "2024-09-14", nextDueDate: "2026-03-20" }, { name: "Neurological Assessment", lastPerformed: "2025-09-20", nextDueDate: "2026-05-25" }],
-    screeningsAndLabs: [
-      { test: "TSH (Thyroid)", facility: "Lab Corp", date: "2026-01-08" },
-      { test: "Neurological Assessment", facility: "Neurology Clinic", date: "2025-09-20" },
-      { test: "TSH (Thyroid)", facility: "Lab Corp", date: "2025-03-15" },
-      { test: "CBC", facility: "Main Clinic", date: "2024-10-05" },
-      { test: "TSH (Thyroid)", facility: "Lab Corp", date: "2024-06-18" },
-    ],
-    nurseSummary: [
-      "Meds: Gabapentin + Levothyroxine confirmed. Pt. states taking Levothyroxine at 7AM daily. Sertraline unreconciled — pt. states started 2 months ago by PCP; dose unknown.",
-      "Allergies: Latex unverified — pt. reports no prior reactions; documented as precautionary. Gloves changed to non-latex.",
-      "Vitals: BP 122/78, HR 66, Temp 98.5°F. PHQ-2 score: 2 — PHQ-9 administered; score 7 (mild depression), flagged for provider.",
-      "Vaccines: COVID Booster, Pneumonia + Shingles all pending — pt. declined today; documented. Follow up at next visit.",
-      "Care Gaps: Mental Health Screening completed today (PHQ-9). Neuro Assessment due 05/2026 — pt. aware; coord. with Dr. Chen.",
-      "Pt. c/o fatigue and mild memory lapses x3 wks. Denies headaches or vision changes. Reports 5 lb weight gain over 2 months — noted for thyroid review.",
-    ],
-    complaints: [
-      "Persistent fatigue and low energy x3 weeks — difficulty concentrating at work",
-      "Memory lapses — forgetting names and appointments; new onset per pt.",
-      "5 lb unintentional weight gain over past 2 months despite no dietary changes",
-      "Recurring headaches 2–3x/week, frontal, moderate intensity, relieved with Tylenol",
-      "Low mood and decreased motivation — PHQ-9 score 7 (mild) today",
-    ],
-    roi: [{ id: 4, facility: "Neurology Clinic", requestedDate: "2026-04-05", status: "Signature Pending" }]
-  },
-  5: {
-    visits: [{ type: "Gastroenterology", date: "2025-11-10", provider: "Dr. Nguyen" }, { type: "General Checkup", date: "2025-10-15", provider: "Dr. Nguyen" }],
-    allergies: { reconciled: ["Shellfish", "Soy"], unreconciled: ["Nuts", "Sesame"] },
-    medications: { reconciled: ["Omeprazole", "Simvastatin"], unreconciled: ["Metformin"] },
-    immunizations: { reconciled: ["Pneumonia", "Flu Shot", "COVID Booster"], unreconciled: ["Shingles"] },
-    careGaps: [{ name: "Colonoscopy", lastPerformed: "2021-05-12", nextDueDate: "2026-05-12" }, { name: "Liver Function Tests", lastPerformed: "2024-11-03", nextDueDate: "2026-05-03" }, { name: "Dietary Consultation", lastPerformed: "2024-04-28", nextDueDate: "2026-04-28" }],
-    screeningsAndLabs: [
-      { test: "Liver Function Tests", facility: "GI Specialists", date: "2026-02-20" },
-      { test: "H. Pylori Test", facility: "GI Specialists", date: "2025-11-10" },
-      { test: "Liver Function Tests", facility: "Lab Corp", date: "2025-05-03" },
-      { test: "Lipid Panel", facility: "Lab Corp", date: "2024-10-15" },
-    ],
-    nurseSummary: [
-      "Meds: Omeprazole + Simvastatin confirmed. Metformin unreconciled — pt. states taking 500mg BID; reports mild nausea. Added to reconciled list pending provider sign-off.",
-      "Allergies: Nuts + Sesame unverified — pt. reports h/o throat tightening with tree nuts. Sesame unclear. EpiPen at home per pt. Chart flagged.",
-      "Vitals: BP 120/74, HR 70, Temp 98.7°F. Wt: 182 lbs (down 4 lbs from last visit).",
-      "Vaccines: Shingles pending — pt. eligible; scheduled for next pharmacy visit.",
-      "Care Gaps: Colonoscopy overdue — pt. has not had one since 2021; urgent GI Specialists referral placed today. LFTs ordered.",
-      "Pt. c/o bloating and reflux 3–4x/wk, worse after dinner. Denies blood in stool. BMs regular. Dietary consult referral placed.",
-    ],
-    complaints: [
-      "Bloating and acid reflux 3–4x/week, worse after evening meals and when lying down",
-      "Morning nausea without vomiting x3 weeks; pt. relates to Metformin initiation",
-      "Change in bowel habits x6 weeks — alternating loose stools and constipation",
-      "Mild epigastric discomfort after meals, rated 3/10",
-    ],
-    roi: [
-      { id: 5, facility: "GI Specialists", requestedDate: "2026-04-04", status: "Sent to Facility" },
-      { id: 6, facility: "Lab Services", requestedDate: "2026-04-02", status: "Completed" }
-    ]
-  },
-  6: {
-    visits: [{ type: "Rheumatology", date: "2025-11-01", provider: "Dr. Patel" }, { type: "Physical Therapy", date: "2025-10-20", provider: "Dr. Brown" }],
-    allergies: { reconciled: ["Aspirin", "NSAIDs"], unreconciled: ["Sulfa"] },
-    medications: { reconciled: ["Methotrexate", "Prednisone"], unreconciled: ["Hydroxychloroquine"] },
-    immunizations: { reconciled: ["Flu Shot"], unreconciled: ["COVID Booster", "Pneumonia", "Shingles"] },
-    careGaps: [{ name: "Blood Work", lastPerformed: "2025-03-05", nextDueDate: "2026-06-05" }, { name: "Rheumatology Follow-up", lastPerformed: "2025-01-15", nextDueDate: "2026-03-15" }, { name: "Joint Assessment", lastPerformed: "2024-10-20", nextDueDate: "2026-04-20" }],
-    screeningsAndLabs: [
-      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2026-03-05" },
-      { test: "CRP / ESR", facility: "Rheumatology Center", date: "2025-10-12" },
-      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2025-04-28" },
-      { test: "CRP / ESR", facility: "Rheumatology Center", date: "2024-11-01" },
-      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2024-05-22" },
-    ],
-    nurseSummary: [
-      "Meds: Methotrexate + Prednisone confirmed. Pt. denies mouth sores or easy bruising. Reports mild nausea 1–2x/wk after Methotrexate. Hydroxychloroquine unreconciled — pt. states starting next week per rheumatologist.",
-      "Allergies: Sulfa unverified — pt. confirmed h/o rash. ⚠ Critical given immunosuppressive therapy — provider alerted.",
-      "Vitals: BP 130/82, HR 76, Temp 98.3°F. Morning stiffness reported: ~45 min bilat. hands + wrists.",
-      "Vaccines: ⚠ COVID Booster, Pneumonia + Shingles pending — live vaccines contraindicated w/ Methotrexate; provider must approve before scheduling.",
-      "Care Gaps: Rheumatology F/U overdue — pt. states appt. canceled 3/2026; rescheduling in progress. Joint Assessment performed today; ROM limited at wrists bilat.",
-      "Pt. c/o increased joint pain over past 2 wks. Denies vision changes or light sensitivity. Ophthalmology screen (Hydroxychloroquine) not yet scheduled — noted.",
-    ],
-    complaints: [
-      "Bilateral wrist and hand joint pain — rated 5/10 at rest, worsening with gripping",
-      "Morning stiffness in hands and wrists lasting approximately 45 minutes daily",
-      "Generalized fatigue x2 weeks — pt. reports difficulty completing household tasks",
-      "Nausea 1–2x/week following Methotrexate dose on Mondays",
-    ],
-    roi: [{ id: 7, facility: "Rheumatology Center", requestedDate: "2026-04-08", status: "Signature Pending" }]
-  },
-  7: {
-    visits: [{ type: "Pulmonary", date: "2025-12-10", provider: "Dr. Smith" }, { type: "Sleep Medicine", date: "2025-11-25", provider: "Dr. Lee" }],
-    allergies: { reconciled: ["Tree Nuts"], unreconciled: ["Shellfish", "Fish"] },
-    medications: { reconciled: ["Albuterol", "Fluticasone"], unreconciled: ["Montelukast"] },
-    immunizations: { reconciled: ["Flu Shot", "Pneumonia", "COVID Booster"], unreconciled: ["Shingles"] },
-    careGaps: [{ name: "Pulmonary Function Test", lastPerformed: "2025-06-18", nextDueDate: "2026-06-10" }, { name: "Sleep Study", lastPerformed: "2024-03-22", nextDueDate: "2026-03-22" }, { name: "Oxygen Saturation Monitoring", lastPerformed: "2025-11-25", nextDueDate: "2026-02-28" }],
-    screeningsAndLabs: [
-      { test: "Pulmonary Function Test", facility: "Pulmonology Associates", date: "2025-12-10" },
-      { test: "Oxygen Saturation", facility: "Main Clinic", date: "2025-06-18" },
-      { test: "Chest X-Ray", facility: "Pulmonology Associates", date: "2025-01-30" },
-      { test: "Pulmonary Function Test", facility: "Pulmonology Associates", date: "2024-07-09" },
-    ],
-    nurseSummary: [
-      "Meds: Albuterol + Fluticasone confirmed. Inhaler technique reviewed — pt. demonstrated correct use. Montelukast unreconciled — pt. states taking 10mg QD per pulmonologist.",
-      "Allergies: Shellfish + Fish unverified — pt. reports h/o hives with shellfish; fish unclear. Chart flagged. Non-latex gloves used.",
-      "Vitals: BP 118/74, HR 82, Temp 98.5°F. SpO2: 96% on RA — within acceptable range, noted.",
-      "Vaccines: Shingles pending — scheduled for next visit.",
-      "Care Gaps: Sleep Study overdue — pt. stopped CPAP 6 months ago; still symptomatic (snoring, daytime fatigue). Referral to Sleep Medicine placed. O2 Sat monitored today.",
-      "Pt. c/o nighttime coughing 3–4x/wk and exertional SOB. Denies recent ER visits or oral steroids. No respiratory infections since last visit. PFT due 06/2026 — pt. aware.",
-    ],
-    complaints: [
-      "Nighttime coughing episodes 3–4x/week, worse in early morning; disrupts sleep",
-      "Exertional shortness of breath — onset after walking >1 city block",
-      "Daytime fatigue — pt. falling asleep at desk; correlates with poor nighttime sleep",
-      "Loud snoring with witnessed apnea episodes per bed partner; stopped CPAP 6 months ago",
-    ],
-    roi: [{ id: 8, facility: "Pulmonology Associates", requestedDate: "2026-04-07", status: "Sent to Facility" }]
-  },
-  8: {
-    visits: [{ type: "Oncology", date: "2025-10-30", provider: "Dr. Chen" }, { type: "General Checkup", date: "2025-10-15", provider: "Dr. Martinez" }],
-    allergies: { reconciled: ["Contrast Dye", "Latex"], unreconciled: ["Chemotherapy agents"] },
-    medications: { reconciled: ["Tamoxifen", "Loratadine"], unreconciled: ["Vitamin D supplement"] },
-    immunizations: { reconciled: ["Flu Shot"], unreconciled: ["COVID Booster", "Pneumonia"] },
-    careGaps: [{ name: "Oncology Follow-up", lastPerformed: "2025-10-30", nextDueDate: "2026-04-30" }, { name: "Mammography", lastPerformed: "2024-08-09", nextDueDate: "2026-02-15" }, { name: "Tumor Markers", lastPerformed: "2025-09-15", nextDueDate: "2026-03-15" }, { name: "Bone Density Scan", lastPerformed: "2023-12-01", nextDueDate: "2026-05-15" }],
-    screeningsAndLabs: [
-      { test: "Tumor Markers (CA 15-3)", facility: "Cancer Center", date: "2026-02-15" },
-      { test: "Mammography", facility: "Imaging Center", date: "2025-08-09" },
-      { test: "Tumor Markers (CA 15-3)", facility: "Cancer Center", date: "2025-03-20" },
-      { test: "Bone Density Scan", facility: "Imaging Center", date: "2024-12-01" },
-      { test: "CBC / Metabolic Panel", facility: "Lab Corp", date: "2024-07-11" },
-    ],
-    nurseSummary: [
-      "Meds: Tamoxifen + Loratadine confirmed. Pt. reports hot flashes daily and AM joint stiffness — documented, flagged for provider. Vitamin D supplement unreconciled; pt. states taking 2000 IU OTC.",
-      "Allergies: ⚠ Chemotherapy agents allergy unreconciled — critical; provider alerted before any new Rx ordered. Contrast Dye + Latex confirmed, chart updated.",
-      "Vitals: BP 124/78, HR 70, Temp 98.4°F. Wt: 164 lbs (stable). Pt. denies leg swelling or unusual vaginal bleeding.",
-      "Vaccines: ⚠ COVID Booster + Pneumonia pending — immunosuppressed; vaccination hold confirmed with oncology team.",
-      "Care Gaps: Mammography overdue — not done since 08/2024; urgent referral placed to Imaging Center. Tumor Markers (CA 15-3) overdue — labs ordered today.",
-      "Pt. c/o increased fatigue x3 wks and decreased appetite. Denies new pain. Oncology F/U confirmed 04/30/2026 at Cancer Center.",
-    ],
-    complaints: [
-      "Increased fatigue x3 weeks — sleeping 10+ hours/night, still exhausted; affecting daily function",
-      "Decreased appetite — eating ~50% of usual meals; 3 lb unintentional weight loss in 3 weeks",
-      "Daily hot flashes — 4–6 episodes/day, lasting 5–10 minutes; disrupting sleep",
-      "AM joint stiffness in hands and knees, lasting ~20 minutes; attributed to Tamoxifen",
-      "Mild lower back ache x1 week — rated 2/10, no radiation to legs; noted for oncology review",
-    ],
-    roi: [
-      { id: 9, facility: "Cancer Center", requestedDate: "2026-04-06", status: "Completed" },
-      { id: 10, facility: "Imaging Center", requestedDate: "2026-04-05", status: "Signature Pending" }
-    ]
-  }
-};
-const stages: string[] = ["Data Prepared", "Data Validated", "Patient Record Updated", "Readiness Evaluated"];
-const stageColors: Record<string, string> = {
-  "Data Prepared": "#3b82f6",
-  "Data Validated": "#06b6d4",
-  "Patient Record Updated": "#f59e0b",
-  "Readiness Evaluated": "#22c55e"
-};
-const visitsToday: VisitToday[] = [
-  { id: 1, patient: "John Doe", time: "09:00 AM", provider: "Dr. Smith", nurse: "Sarah Johnson, RN", status: "Completed" },
-  { id: 2, patient: "Jane Roe", time: "09:30 AM", provider: "Dr. Adams", nurse: "Michael Chen, RN", status: "Completed" },
-  { id: 3, patient: "Michael Lee", time: "10:00 AM", provider: "Dr. Brown", nurse: "Emily Rodriguez, RN", status: "Pending" },
-  { id: 4, patient: "Sarah Johnson", time: "10:30 AM", provider: "Dr. Wilson", nurse: "James Patterson, RN", status: "Pending" },
-  { id: 5, patient: "Robert Martinez", time: "11:00 AM", provider: "Dr. Garcia", nurse: "Sarah Johnson, RN", status: "Completed" },
-  { id: 6, patient: "Emily Chen", time: "11:30 AM", provider: "Dr. Taylor", nurse: "Michael Chen, RN", status: "Pending" }
-];
-const roiRequests: ROI[] = [
-  { id: 1, patient: "John Doe", facility: "General Hospital", requestedDate: "2026-04-08", status: "Signature Pending" },
-  { id: 2, patient: "John Doe", facility: "City Clinic", requestedDate: "2026-04-07", status: "Sent to Facility" },
-  { id: 3, patient: "Jane Roe", facility: "Heart Center", requestedDate: "2026-04-06", status: "Completed" },
-  { id: 4, patient: "Michael Lee", facility: "Specialty Clinic", requestedDate: "2026-04-05", status: "Signature Pending" },
-  { id: 5, patient: "Sarah Johnson", facility: "General Hospital", requestedDate: "2026-04-04", status: "Sent to Facility" },
-  { id: 6, patient: "Robert Martinez", facility: "Cardiology Center", requestedDate: "2026-04-03", status: "Completed" }
-];
-const weeklyVisits: WeeklyVisit[] = [
-  { week: "Week 1", visits: 58, aht: 22 },
-  { week: "Week 2", visits: 72, aht: 18 },
-  { week: "Week 3", visits: 65, aht: 28 },
-  { week: "Week 4", visits: 85, aht: 24 },
-  { week: "Week 5", visits: 92, aht: 26 }
-];
+import type { Patient, PatientDetail, ROI, VisitToday, WeeklyVisit, PieChartData, RecordsState, AdditionalState, SubstanceState } from "./data/types";
+import { stages, stageColors } from "./data/mockData";
+import { useAppData } from "./hooks/useAppData";
 // ============ HELPERS ============
 function getInitials(name: string): string {
   return name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -422,31 +98,50 @@ function DonutChart({ data, total }: { data: PieChartData[]; total: number }): J
   );
 }
 // ============ READINESS GAUGE ============
-function ReadinessGauge({ value }: { value: number }): JSX.Element {
-  const color = value < 40 ? "#ef4444" : value < 70 ? "#f97316" : "#22c55e";
-  const r = 34, cx = 50, cy = 46;
-  const angle = -180 + (value / 100) * 180;
-  const startX = cx - r;
-  const startY = cy;
-  const endX = cx + r;
-  const endRad = (angle * Math.PI) / 180;
-  const arcX = cx + r * Math.cos(endRad);
-  const arcY = cy + r * Math.sin(endRad);
-  const largeArc = 0;
-  const needleRad = endRad;
-  const needleX = cx + (r - 6) * Math.cos(needleRad);
-  const needleY = cy + (r - 6) * Math.sin(needleRad);
+function ReadinessGauge({ value, size = 56 }: { value: number; size?: number }): JSX.Element {
+  // Text/pivot color follows progression
+  const textColor = value < 25 ? "#ef4444" : value < 50 ? "#f97316" : value < 75 ? "#ca8a04" : "#16a34a";
+  const cx = 50, cy = 52, r = 36;
+  const startX = cx - r; // 14
+  const endX = cx + r;   // 86
+  const theta = -Math.PI + (value / 100) * Math.PI;
+  const arcX = cx + r * Math.cos(theta);
+  const arcY = cy + r * Math.sin(theta);
+  const svgH = cy + 8;
+  const displayH = Math.round(size * svgH / 100);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg width={56} height={32} viewBox="0 0 100 58">
-        <path d={`M ${startX} ${startY} A ${r} ${r} 0 0 1 ${endX} ${startY}`} fill="none" stroke="#e5e7eb" strokeWidth={6} strokeLinecap="round" />
-        {value > 0 && (
-          <path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${arcX.toFixed(2)} ${arcY.toFixed(2)}`} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round" />
+      <svg width={size} height={displayH} viewBox={`0 0 100 ${svgH}`}>
+        <defs>
+          {/* Horizontal gradient mapped to the arc's x-span (14→86) */}
+          <linearGradient id="rgGrad" x1={startX} y1="0" x2={endX} y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#ef4444" />
+            <stop offset="33%" stopColor="#f97316" />
+            <stop offset="60%" stopColor="#facc15" />
+            <stop offset="100%" stopColor="#22c55e" />
+          </linearGradient>
+        </defs>
+        {/* Track — full arc, gradient at low opacity */}
+        <path d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${endX} ${cy}`}
+          fill="none" stroke="url(#rgGrad)" strokeWidth={9} strokeLinecap="round" opacity={0.2} />
+        {/* Fill arc */}
+        {value > 0 && value < 100 && (
+          <path d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${arcX.toFixed(2)} ${arcY.toFixed(2)}`}
+            fill="none" stroke="url(#rgGrad)" strokeWidth={9} strokeLinecap="round" />
         )}
-        <line x1={cx} y1={cy} x2={needleX.toFixed(2)} y2={needleY.toFixed(2)} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r={3} fill={color} />
+        {value >= 100 && (
+          <path d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${endX} ${cy}`}
+            fill="none" stroke="url(#rgGrad)" strokeWidth={9} strokeLinecap="round" />
+        )}
+        {/* Tip dot */}
+        {value > 0 && value < 100 && (
+          <circle cx={arcX.toFixed(2)} cy={arcY.toFixed(2)} r={5.5} fill="url(#rgGrad)" />
+        )}
+        {/* Value label */}
+        <text x={cx} y={cy - 8} textAnchor="middle" fontSize="13" fontWeight="700" fill={textColor}>{value}%</text>
+        {/* Center pivot */}
+        <circle cx={cx} cy={cy} r={4} fill="#fff" stroke={textColor} strokeWidth={2} />
       </svg>
-      <div style={{ fontSize: 11, fontWeight: 700, color, marginTop: -2 }}>{value}%</div>
     </div>
   );
 }
@@ -598,6 +293,7 @@ const inputCss: React.CSSProperties = {
 // ============ APP ROOT ============
 export default function App(): JSX.Element {
   const { state: authState, login, logout } = useAuth();
+  const { patients, patientDetails, visitsToday, roiRequests, weeklyVisits, defaultDetails, loading: dataLoading, addROI } = useAppData();
   const [view, setView] = useState<View>("dashboard");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showROI, setShowROI] = useState(false);
@@ -612,22 +308,26 @@ export default function App(): JSX.Element {
           onPatientClear={() => { setSelectedPatient(null); setShowROI(false); }}
         />
         <div style={{ flex: 1, background: "#f8fafc", overflowY: "auto" }}>
-          {showROI && selectedPatient ? (
+          {dataLoading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", flexDirection: "column", gap: 12 }}>
+              <div style={{ width: 36, height: 36, border: "3px solid #e2e8f0", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <div style={{ fontSize: 14, color: "#64748b", fontWeight: 500 }}>Loading patient data…</div>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          ) : showROI && selectedPatient ? (
             <CreateROIPage
               patient={selectedPatient}
               authState={authState}
               onBack={() => setShowROI(false)}
               onSubmit={(roi) => {
-                if (!patientDetails[selectedPatient.id]) {
-                  patientDetails[selectedPatient.id] = { ...defaultDetails, roi: [] };
-                }
-                patientDetails[selectedPatient.id].roi.push(roi);
+                addROI(selectedPatient.guid ?? String(selectedPatient.id), roi);
                 setShowROI(false);
               }}
             />
           ) : selectedPatient ? (
             <PatientRecord
               patient={selectedPatient}
+              detail={patientDetails[selectedPatient.guid ?? String(selectedPatient.id)] ?? defaultDetails}
               authState={authState}
               onBack={() => setSelectedPatient(null)}
               onCreateROI={() => setShowROI(true)}
@@ -635,6 +335,9 @@ export default function App(): JSX.Element {
           ) : view === "dashboard" ? (
             <DashboardPage
               patients={patients}
+              visitsToday={visitsToday}
+              weeklyVisits={weeklyVisits}
+              roiRequests={roiRequests}
               onNavigateToUpcoming={(nurse) => { setView("upcoming"); setNurseFilter(nurse || ""); }}
               onNavigateToCompleted={() => setView("completed")}
             />
@@ -652,8 +355,11 @@ export default function App(): JSX.Element {
   );
 }
 // ============ DASHBOARD ============
-function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToCompleted }: {
+function DashboardPage({ patients: pts, visitsToday, weeklyVisits, roiRequests, onNavigateToUpcoming, onNavigateToCompleted }: {
   patients: Patient[];
+  visitsToday: VisitToday[];
+  weeklyVisits: WeeklyVisit[];
+  roiRequests: ROI[];
   onNavigateToUpcoming: (nurse?: string) => void;
   onNavigateToCompleted: () => void;
 }): JSX.Element {
@@ -706,23 +412,36 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
       </div>
       {/* Charts row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 16, marginBottom: 24 }}>
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Stage Distribution</div>
-          <DonutChart data={stageData} total={totalCount} />
+        <div style={{ background: "#fff", border: "1px solid #ddd6fe", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid #ddd6fe", background: "linear-gradient(90deg,#f5f3ff,#fff)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#4338ca", flexShrink: 0 }} />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Stage Distribution</span>
+          </div>
+          <div style={{ padding: "16px 20px" }}><DonutChart data={stageData} total={totalCount} /></div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Status Overview</div>
-          <DonutChart data={statusData} total={totalCount} />
+        <div style={{ background: "#fff", border: "1px solid #bfdbfe", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid #bfdbfe", background: "linear-gradient(90deg,#eff6ff,#fff)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#2563eb", flexShrink: 0 }} />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Status Overview</span>
+          </div>
+          <div style={{ padding: "16px 20px" }}><DonutChart data={statusData} total={totalCount} /></div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Weekly Visits — YTD</div>
+        <div style={{ background: "#fff", border: "1px solid #cffafe", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid #cffafe", background: "linear-gradient(90deg,#ecfeff,#fff)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 4, height: 18, borderRadius: 2, background: "#0891b2", flexShrink: 0 }} />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0e7490" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Weekly Visits — YTD</span>
+            </div>
             <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748b" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 10, background: "#bfdbfe", borderRadius: 2, display: "inline-block" }} />AHT (min)</span>
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ display: "inline-block", width: 16, height: 2, background: "#2563eb", verticalAlign: "middle" }} />Visits</span>
             </div>
           </div>
-          <svg width="100%" height={120} viewBox="0 0 500 120" preserveAspectRatio="none">
+          <div style={{ padding: "16px 20px" }}>
+            <svg width="100%" height={120} viewBox="0 0 500 120" preserveAspectRatio="none">
             {[0, 50, 100].map((v, i) => (
               <text key={i} x="2" y={100 - (v / 100) * 85 + 4} fontSize="9" fill="#94a3b8">{v}</text>
             ))}
@@ -746,15 +465,20 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
                 </g>
               );
             })}
-          </svg>
+            </svg>
+          </div>
         </div>
       </div>
       {/* Bottom tables */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Nurse Visit Assignments</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Today's schedule — click a row to filter queue</div>
+        <div style={{ background: "#fff", border: "1px solid #bbf7d0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid #bbf7d0", background: "linear-gradient(90deg,#f0fdf4,#fff)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#16a34a", flexShrink: 0 }} />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Nurse Visit Assignments</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>Today's schedule — click a row to filter queue</div>
+            </div>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>{["Nurse", "Pending", "Completed", "Total"].map((h) => <th key={h} style={thS}>{h}</th>)}</tr></thead>
@@ -772,10 +496,14 @@ function DashboardPage({ patients: pts, onNavigateToUpcoming, onNavigateToComple
             </tbody>
           </table>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Recent ROI Requests</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Latest release of information activity</div>
+        <div style={{ background: "#fff", border: "1px solid #ddd6fe", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid #ddd6fe", background: "linear-gradient(90deg,#f5f3ff,#fff)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#7c3aed", flexShrink: 0 }} />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Recent ROI Requests</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>Latest release of information activity</div>
+            </div>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>{["Patient", "Facility", "Date", "Status"].map((h) => <th key={h} style={thS}>{h}</th>)}</tr></thead>
@@ -827,9 +555,13 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{isCompleted ? "Completed Visits" : "Upcoming Visits"}</h1>
         <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b" }}>{isCompleted ? "Review past patient visits" : "Review upcoming visits and manage schedules"}</p>
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Filter Records</div>
+      <div style={{ background: "#fff", border: "1px solid #bfdbfe", borderRadius: 12, overflow: "hidden", marginBottom: 20, boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+        <div style={{ padding: "12px 20px", borderBottom: "1px solid #bfdbfe", background: "linear-gradient(90deg,#eff6ff,#fff)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: "#2563eb", flexShrink: 0 }} />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Filter Records</span>
+          </div>
           {(search || stageF || statusF || providerF || nurseF) && (
             <button onClick={() => { setSearch(""); setStageF(""); setStatusF(""); setProviderF(""); setNurseF(""); }}
               style={{ fontSize: 12, fontWeight: 600, color: "#3b82f6", background: "none", border: "none", cursor: "pointer", padding: "2px 6px", borderRadius: 4 }}>
@@ -837,7 +569,7 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
             </button>
           )}
         </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ padding: "14px 20px", display: "flex", gap: 12, flexWrap: "wrap" }}>
           <input placeholder="Name, MRN, or Nurse..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inputCss, minWidth: 200, flex: "1 1 200px" }} />
           {([
             { label: "All Stages", val: stageF, set: setStageF, opts: uniq(pts.map((p) => p.stage)) },
@@ -852,9 +584,14 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
           ))}
         </div>
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ padding: "10px 16px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", fontSize: 12, color: "#64748b" }}>
-          Showing <strong style={{ color: "#0f172a" }}>{filtered.length}</strong> of <strong style={{ color: "#0f172a" }}>{pts.length}</strong> rows
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+        <div style={{ padding: "12px 20px", borderBottom: "1px solid #e2e8f0", background: "linear-gradient(90deg,#f8fafc,#fff)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: isCompleted ? "#16a34a" : "#f59e0b", flexShrink: 0 }} />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isCompleted ? "#15803d" : "#b45309"} strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{isCompleted ? "Completed Visits" : "Upcoming Visits"}</span>
+          </div>
+          <span style={{ fontSize: 12, color: "#64748b" }}>Showing <strong style={{ color: "#0f172a" }}>{filtered.length}</strong> of <strong style={{ color: "#0f172a" }}>{pts.length}</strong></span>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ background: "#f8fafc" }}>
@@ -894,13 +631,14 @@ function QueuePage({ patients: pts, onSelect, initialNurseFilter = "", isComplet
   );
 }
 // ============ PATIENT RECORD ============
-function PatientRecord({ patient, authState, onBack, onCreateROI }: {
+function PatientRecord({ patient, detail, authState, onBack, onCreateROI }: {
   patient: Patient;
+  detail: PatientDetail;
   authState: AuthState;
   onBack: () => void;
   onCreateROI: () => void;
 }): JSX.Element {
-  const d = patientDetails[patient.id] || defaultDetails;
+  const d = detail;
   const currentStageIdx = stages.indexOf(patient.stage);
   const [activeTab, setActiveTab] = useState<"intake" | "chart" | "roi">("intake");
   const isAuthenticated = authState === "authenticated";
@@ -957,58 +695,104 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
               </div>
             ))}
           </div>
-          {/* Intake summary */}
-          <div style={{ padding: "16px 20px" }}>
-            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "12px 14px", boxShadow: "0 2px 6px rgba(245,158,11,0.12)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <span style={{ fontSize: 14 }}>⚡</span>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nurse Intake Notes</div>
-              </div>
-              {d.nurseSummary.map((note, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: i < d.nurseSummary.length - 1 ? "1px dashed #fcd34d" : "none" }}>
-                  <span style={{ fontSize: 14, color: "#b45309", lineHeight: 1.4, flexShrink: 0 }}>•</span>
-                  <span style={{ fontSize: 12, color: "#78350f", lineHeight: 1.6 }}>{note}</span>
+          {/* Readiness */}
+          {(() => {
+            const rv = patient.readiness;
+            const rColor = rv < 25 ? "#ef4444" : rv < 50 ? "#f97316" : rv < 75 ? "#ca8a04" : "#16a34a";
+            const rBg = rv < 25 ? "linear-gradient(160deg,#fef2f2,#fff7ed)" : rv < 50 ? "linear-gradient(160deg,#fff7ed,#fffbeb)" : rv < 75 ? "linear-gradient(160deg,#fffbeb,#fefce8)" : "linear-gradient(160deg,#f0fdf4,#ecfeff)";
+            const rBorder = rv < 25 ? "#fecaca" : rv < 50 ? "#fed7aa" : rv < 75 ? "#fde68a" : "#bbf7d0";
+            const rLabel = rv < 25 ? "Action Required" : rv < 50 ? "Needs Attention" : rv < 75 ? "In Progress" : "Visit Ready";
+            const rIcon = rv < 25
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={rColor} strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              : rv < 75
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={rColor} strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={rColor} strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+            return (
+              <div style={{ margin: "12px 12px 0", borderRadius: 12, border: `1px solid ${rBorder}`, background: rBg, overflow: "hidden" }}>
+                <div style={{ padding: "10px 14px 0", display: "flex", alignItems: "center", gap: 6 }}>
+                  {rIcon}
+                  <span style={{ fontSize: 10, fontWeight: 700, color: rColor, textTransform: "uppercase", letterSpacing: "0.07em" }}>Readiness Score</span>
                 </div>
-              ))}
-            </div>
-          </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 0 10px" }}>
+                  <Tooltip text={rv < 40 ? "Low readiness — action required" : rv < 70 ? "Moderate readiness — in progress" : "High readiness — visit ready"} position="top">
+                    <ReadinessGauge value={rv} size={110} />
+                  </Tooltip>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: rColor, background: rColor + "18", border: `1px solid ${rColor}40`, borderRadius: 20, padding: "3px 12px", marginTop: 2 }}>{rLabel}</span>
+                </div>
+              </div>
+            );
+          })()}
+          <div style={{ height: 12 }} />
+          {/* Intake Progress */}
+          {(() => {
+            const pct = Math.round((currentStageIdx / (stages.length - 1)) * 100);
+            const stageDesc: Record<string, string> = {
+              "Data Prepared": "Patient data gathered and prepared",
+              "Data Validated": "Verified against source records",
+              "Patient Record Updated": "EMR updated with validated information",
+              "Readiness Evaluated": "Patient is fully ready for visit",
+            };
+            return (
+              <div style={{ margin: "10px 12px 12px", borderRadius: 12, border: "1px solid #bfdbfe", background: "#fff", overflow: "hidden" }}>
+                {/* Header */}
+                <div style={{ background: "linear-gradient(90deg,#eff6ff 0%,#fff 100%)", borderBottom: "1px solid #bfdbfe", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#3b82f6", textTransform: "uppercase" as const, letterSpacing: "0.07em" }}>Intake Progress</span>
+                </div>
+                {/* Progress bar */}
+                <div style={{ height: 4, background: "#dbeafe" }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "linear-gradient(90deg,#3b82f6,#22c55e)" : "linear-gradient(90deg,#3b82f6,#60a5fa)", borderRadius: "0 2px 2px 0", transition: "width 0.4s ease" }} />
+                </div>
+                {/* Steps */}
+                <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 0 }}>
+                  {stages.map((s, i) => {
+                    const done = i < currentStageIdx;
+                    const active = i === currentStageIdx;
+                    const pending = i > currentStageIdx;
+                    const isLast = i === stages.length - 1;
+                    return (
+                      <div key={s} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        {/* Connector column */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, marginTop: 2 }}>
+                          <Tooltip text={stageDesc[s] ?? s} position="top">
+                            <div style={{
+                              width: 20, height: 20, borderRadius: "50%", flexShrink: 0, cursor: "default",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: done ? "#2563eb" : active ? "#eff6ff" : "#f8fafc",
+                              border: done ? "2px solid #2563eb" : active ? "2px solid #3b82f6" : "2px solid #cbd5e1",
+                              boxShadow: active ? "0 0 0 3px #bfdbfe" : "none",
+                            }}>
+                              {done && (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                              )}
+                              {active && (
+                                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6" }} />
+                              )}
+                            </div>
+                          </Tooltip>
+                          {!isLast && (
+                            <div style={{ width: 2, flex: 1, minHeight: 18, marginTop: 2, background: done ? "#2563eb" : "#e2e8f0", borderRadius: 1 }} />
+                          )}
+                        </div>
+                        {/* Label */}
+                        <div style={{ paddingTop: 2, paddingBottom: isLast ? 0 : 18, flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, fontWeight: active ? 700 : done ? 600 : 400, color: done ? "#1e40af" : active ? "#1d4ed8" : "#94a3b8", lineHeight: 1.3 }}>{s}</span>
+                            {active && <span style={{ fontSize: 9, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 8, padding: "1px 6px", letterSpacing: "0.04em" }}>CURRENT</span>}
+                            {done && <span style={{ fontSize: 9, fontWeight: 700, background: "#dcfce7", color: "#15803d", borderRadius: 8, padding: "1px 6px", letterSpacing: "0.04em" }}>DONE</span>}
+                          </div>
+                          {active && <div style={{ fontSize: 10, color: "#64748b", marginTop: 1 }}>{stageDesc[s] ?? ""}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
         {/* Right content */}
         <div style={{ flex: 1, padding: "24px 32px" }}>
-          {/* Progress + Readiness */}
-          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "8px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Intake Progress</div>
-              <div style={{ position: "relative", display: "flex", padding: "0 6px" }}>
-                <div style={{ position: "absolute", top: 7, left: `${50 / stages.length}%`, right: `${50 / stages.length}%`, height: 2, background: "#e2e8f0", zIndex: 0 }} />
-                <div style={{ position: "absolute", top: 7, left: `${50 / stages.length}%`, width: `${currentStageIdx / (stages.length - 1) * (100 - 100 / stages.length)}%`, height: 2, background: "#3b82f6", zIndex: 1 }} />
-                {stages.map((s, i) => {
-                  const done = i <= currentStageIdx;
-                  const stageDesc: Record<string, string> = {
-                    "Data Prepared": "Patient data has been gathered and prepared",
-                    "Data Validated": "Data verified against source records",
-                    "Patient Record Updated": "EMR updated with validated information",
-                    "Readiness Evaluated": "Patient is fully ready for visit",
-                  };
-                  return (
-                    <div key={s} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, flex: 1 }}>
-                      <Tooltip text={stageDesc[s] ?? s} position="top">
-                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: done ? "#3b82f6" : "#e2e8f0", boxShadow: i === currentStageIdx ? "0 0 0 3px #bfdbfe" : "none", cursor: "default" }} />
-                      </Tooltip>
-                      <div style={{ fontSize: 9, color: done ? "#2563eb" : "#94a3b8", marginTop: 4, textAlign: "center", fontWeight: done ? 600 : 400, maxWidth: 72, lineHeight: 1.3 }}>{s}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div style={{ width: 1, alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0 }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Readiness</div>
-              <Tooltip text={patient.readiness < 40 ? "Low readiness — action required" : patient.readiness < 70 ? "Moderate readiness — in progress" : "High readiness — visit ready"} position="top">
-                <ReadinessGauge value={patient.readiness} />
-              </Tooltip>
-            </div>
-          </div>
           {/* Tabs */}
           <div style={{ borderBottom: "1px solid #e2e8f0", marginBottom: 24 }}>
             {tabBtn("intake", "Intake")}
@@ -1018,212 +802,353 @@ function PatientRecord({ patient, authState, onBack, onCreateROI }: {
           {/* Intake tab */}
           {activeTab === "intake" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Clinical Information</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                  <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Recent Visits</div>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead style={{ background: "#f8fafc" }}>
-                        <tr>
-                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Type</th>
-                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Provider</th>
-                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...d.visits].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((v, i) => (
-                          <tr key={i}>
-                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#374151", borderBottom: "1px solid #f1f5f9" }}>{v.type}</td>
-                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#475569", borderBottom: "1px solid #f1f5f9" }}>{v.provider}</td>
-                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{v.date}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* Clinical Information card */}
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(90deg,#f8fafc 0%,#fff 100%)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 2, background: "#2563eb", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", letterSpacing: "0.01em" }}>Clinical Information</span>
+                </div>
+                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Nurse Intake Notes + Complaints row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    {/* Nurse Intake Notes */}
+                    <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 14 }}>⚡</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#92400e", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Nurse Intake Notes</span>
+                      </div>
+                      {d.nurseSummary.length === 0
+                        ? <div style={{ fontSize: 13, color: "#a16207", fontStyle: "italic" }}>No notes recorded.</div>
+                        : d.nurseSummary.map((note, i) => (
+                            <div key={i} style={{ display: "flex", gap: 8, padding: "5px 0", borderBottom: i < d.nurseSummary.length - 1 ? "1px dashed #fcd34d" : "none" }}>
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d97706", flexShrink: 0, marginTop: 6 }} />
+                              <span style={{ fontSize: 13, color: "#78350f", lineHeight: 1.5 }}>{note}</span>
+                            </div>
+                          ))
+                      }
+                    </div>
+                    {/* Complaints */}
+                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#92400e", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Complaints</span>
+                      </div>
+                      {d.complaints.length === 0
+                        ? <div style={{ fontSize: 13, color: "#a16207", fontStyle: "italic" }}>No complaints recorded.</div>
+                        : <div style={{ display: "flex", flexDirection: "column" as const, gap: 0 }}>
+                            {d.complaints.map((c, i) => (
+                              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "7px 0", borderBottom: i < d.complaints.length - 1 ? "1px dashed #fcd34d" : "none" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d97706", flexShrink: 0, marginTop: 6 }} />
+                                <span style={{ fontSize: 13, color: "#78350f", lineHeight: 1.5 }}>{c}</span>
+                              </div>
+                            ))}
+                          </div>
+                      }
+                    </div>
                   </div>
-                  <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Care Gaps</div>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead style={{ background: "#f8fafc" }}>
-                        <tr>
-                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Preventive Service</th>
-                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Last Performed</th>
-                          <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Next Due Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...d.careGaps].sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime()).map((g, i) => (
-                          <tr key={i}>
-                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#374151", borderBottom: "1px solid #f1f5f9" }}>{g.name}</td>
-                            <td style={{ padding: "4px 8px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{g.lastPerformed}</td>
-                            {(() => {
-                              const today = new Date(); today.setHours(0, 0, 0, 0);
-                              const due = new Date(g.nextDueDate);
-                              const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-                              const isOverdue = days < 0;
-                              const isDueSoon = days >= 0 && days <= 60;
-                              return (
-                                <td style={{ padding: "4px 8px", fontSize: 12, borderBottom: "1px solid #f1f5f9" }}>
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: isOverdue || isDueSoon ? 600 : 400, color: isOverdue ? "#dc2626" : isDueSoon ? "#d97706" : "#64748b" }}>
-                                    {isOverdue && <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fee2e2" stroke="#dc2626" strokeWidth="1" /></svg>}
-                                    {isDueSoon && <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>}
+                  {/* Recent Visits + Care Gaps */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    {/* Recent Visits */}
+                    <div style={{ border: "1px solid #e0e7ff", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ padding: "10px 14px", background: "#eef2ff", borderBottom: "1px solid #e0e7ff", display: "flex", alignItems: "center", gap: 8 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#3730a3", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Recent Visits</span>
+                      </div>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "#f8fafc" }}>
+                            {["Type", "Provider", "Date"].map(h => (
+                              <th key={h} style={{ padding: "6px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...d.visits].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((v, i) => (
+                            <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                              <td style={{ padding: "7px 12px", fontSize: 12, color: "#1e293b", fontWeight: 500, borderBottom: "1px solid #f1f5f9" }}>{v.type}</td>
+                              <td style={{ padding: "7px 12px", fontSize: 12, color: "#475569", borderBottom: "1px solid #f1f5f9" }}>{v.provider}</td>
+                              <td style={{ padding: "7px 12px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{v.date}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Care Gaps */}
+                    <div style={{ border: "1px solid #fde8d8", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ padding: "10px 14px", background: "#fff7ed", borderBottom: "1px solid #fde8d8", display: "flex", alignItems: "center", gap: 8 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#9a3412", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Care Gaps</span>
+                      </div>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "#f8fafc" }}>
+                            {["Preventive Service", "Last Performed", "Next Due"].map(h => (
+                              <th key={h} style={{ padding: "6px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...d.careGaps].sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime()).map((g, i) => {
+                            const today = new Date(); today.setHours(0, 0, 0, 0);
+                            const due = new Date(g.nextDueDate);
+                            const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+                            const isOverdue = days < 0;
+                            const isDueSoon = days >= 0 && days <= 60;
+                            return (
+                              <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fff7ed" }}>
+                                <td style={{ padding: "7px 12px", fontSize: 12, color: "#1e293b", fontWeight: 500, borderBottom: "1px solid #f1f5f9" }}>{g.name}</td>
+                                <td style={{ padding: "7px 12px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{g.lastPerformed}</td>
+                                <td style={{ padding: "7px 12px", fontSize: 12, borderBottom: "1px solid #f1f5f9" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: isOverdue || isDueSoon ? 700 : 400, color: isOverdue ? "#dc2626" : isDueSoon ? "#d97706" : "#64748b", background: isOverdue ? "#fee2e2" : isDueSoon ? "#fef3c7" : "transparent", padding: isOverdue || isDueSoon ? "2px 7px" : "0", borderRadius: 20, fontSize: 11 }}>
+                                    {isOverdue && "⚠ "}
+                                    {isDueSoon && "⏰ "}
                                     {g.nextDueDate}
                                   </span>
                                 </td>
-                              );
-                            })()}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Complaints</div>
-                    {d.complaints.length === 0
-                      ? <div style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>No complaints recorded.</div>
-                      : d.complaints.map((c, i) => (
-                        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: i < d.complaints.length - 1 ? "1px dashed #e2e8f0" : "none" }}>
-                          <span style={{ fontSize: 14, color: "#64748b", lineHeight: 1.4, flexShrink: 0 }}>•</span>
-                          <span style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{c}</span>
-                        </div>
-                      ))
-                    }
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Reconciliation Status</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                  {[
-                    { title: "Allergies", data: d.allergies },
-                    { title: "Medications", data: d.medications },
-                    { title: "Immunizations", data: d.immunizations }
-                  ].map(({ title, data }) => (
-                    <div key={title} style={{ border: "1px solid #f1f5f9", borderRadius: 6, padding: "14px 16px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 12 }}>{title}</div>
-                      {data.reconciled.map((item) => (
-                        <div key={item} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f8fafc" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#dcfce7" /><path d="M4 7l2.5 2.5L10 5" stroke="#16a34a" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
-                            <span style={{ fontSize: 13, color: "#374151" }}>{item}</span>
+
+              {/* Reconciliation Status card */}
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(90deg,#f8fafc 0%,#fff 100%)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 2, background: "#16a34a", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", letterSpacing: "0.01em" }}>Reconciliation Status</span>
+                </div>
+                <div style={{ padding: "16px 20px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                    {[
+                      { title: "Allergies", data: d.allergies, accent: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe", iconColor: "#6d28d9" },
+                      { title: "Medications", data: d.medications, accent: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", iconColor: "#1d4ed8" },
+                    ].map(({ title, data, accent, bg, border, iconColor }) => (
+                      <div key={title} style={{ border: `1px solid ${border}`, borderRadius: 8, overflow: "hidden" }}>
+                        <div style={{ padding: "10px 14px", background: bg, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: iconColor, textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>{title}</span>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#dcfce7", padding: "2px 7px", borderRadius: 20 }}>{data.reconciled.length} ✓</span>
+                            {data.unreconciled.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: "#d97706", background: "#fef3c7", padding: "2px 7px", borderRadius: 20 }}>{data.unreconciled.length} pending</span>}
                           </div>
-                          <Tooltip text="Verified against EMR records" position="top"><span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", cursor: "default" }}>Reconciled</span></Tooltip>
                         </div>
-                      ))}
-                      {data.unreconciled.map((item) => (
-                        <div key={item} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f8fafc" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>
-                            <span style={{ fontSize: 13, color: "#374151" }}>{item}</span>
+                        <div style={{ padding: "8px 14px" }}>
+                          {data.reconciled.map((item) => (
+                            <div key={item} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid #f8fafc" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#dcfce7" /><path d="M4 7l2.5 2.5L10 5" stroke="#16a34a" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+                                <span style={{ fontSize: 13, color: "#374151" }}>{item}</span>
+                              </div>
+                              <Tooltip text="Verified against EMR records" position="top"><span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", cursor: "default", background: "#f0fdf4", padding: "2px 6px", borderRadius: 10 }}>Reconciled</span></Tooltip>
+                            </div>
+                          ))}
+                          {data.unreconciled.map((item) => (
+                            <div key={item} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid #f8fafc" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>
+                                <span style={{ fontSize: 13, color: "#374151" }}>{item}</span>
+                              </div>
+                              <Tooltip text="Awaiting verification or provider review" position="top"><span style={{ fontSize: 10, fontWeight: 700, color: "#d97706", cursor: "default", background: "#fffbeb", padding: "2px 6px", borderRadius: 10 }}>Pending</span></Tooltip>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Immunizations — with administration dates */}
+                    <div style={{ border: "1px solid #bbf7d0", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ padding: "10px 14px", background: "#f0fdf4", borderBottom: "1px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#15803d", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Immunizations</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#dcfce7", padding: "2px 7px", borderRadius: 20 }}>{d.immunizations.reconciled.length} ✓</span>
+                          {d.immunizations.unreconciled.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: "#d97706", background: "#fef3c7", padding: "2px 7px", borderRadius: 20 }}>{d.immunizations.unreconciled.length} pending</span>}
+                        </div>
+                      </div>
+                      <div style={{ padding: "8px 14px" }}>
+                        {d.immunizations.reconciled.map((im) => (
+                          <div key={im.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid #f8fafc" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#dcfce7" /><path d="M4 7l2.5 2.5L10 5" stroke="#16a34a" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+                              <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{im.name}</span>
+                            </div>
+                            <Tooltip text="Verified against EMR records" position="top"><span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", cursor: "default", background: "#f0fdf4", padding: "2px 6px", borderRadius: 10 }}>Reconciled</span></Tooltip>
                           </div>
-                          <Tooltip text="Awaiting verification or provider review" position="top"><span style={{ fontSize: 11, fontWeight: 700, color: "#d97706", cursor: "default" }}>Pending</span></Tooltip>
-                        </div>
-                      ))}
+                        ))}
+                        {d.immunizations.unreconciled.map((im) => (
+                          <div key={im.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid #f8fafc" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>
+                              <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{im.name}</span>
+                            </div>
+                            <Tooltip text="Awaiting administration or verification" position="top"><span style={{ fontSize: 10, fontWeight: 700, color: "#d97706", cursor: "default", background: "#fffbeb", padding: "2px 6px", borderRadius: 10 }}>Pending</span></Tooltip>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </div>
           )}
           {/* Patient Chart tab */}
           {activeTab === "chart" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                <SectionCard title="Vital Signs">
-                  {["BP: 128/82 mmHg", "HR: 72 bpm", "Temp: 98.6°F", "O2: 98% (RA)"].map((v) => <div key={v} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {v}</div>)}
-                </SectionCard>
-                <SectionCard title="Current Medications">
-                  {[...d.medications.reconciled, ...d.medications.unreconciled].map((m) => <div key={m} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {m}</div>)}
-                </SectionCard>
-                <SectionCard title="Allergies">
-                  {[...d.allergies.reconciled, ...d.allergies.unreconciled].map((a) => <div key={a} style={{ fontSize: 13, color: "#475569", padding: "3px 0" }}>• {a}</div>)}
-                </SectionCard>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Top row: Vitals, Medications, Allergies */}
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(90deg,#f8fafc 0%,#fff 100%)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 2, background: "#0891b2", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", letterSpacing: "0.01em" }}>Clinical Summary</span>
+                </div>
+                <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                  {/* Vital Signs */}
+                  <div style={{ border: "1px solid #cffafe", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 14px", background: "#ecfeff", borderBottom: "1px solid #cffafe", display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0e7490" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#155e75", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Vital Signs</span>
+                    </div>
+                    <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column" as const, gap: 4 }}>
+                      {["BP: 128/82 mmHg", "HR: 72 bpm", "Temp: 98.6°F", "O2: 98% (RA)"].map((v, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < 3 ? "1px solid #f1f5f9" : "none" }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0891b2", flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, color: "#374151" }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Medications */}
+                  <div style={{ border: "1px solid #bfdbfe", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 14px", background: "#eff6ff", borderBottom: "1px solid #bfdbfe", display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#1e40af", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Current Medications</span>
+                    </div>
+                    <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column" as const, gap: 4 }}>
+                      {[...d.medications.reconciled, ...d.medications.unreconciled].map((m, i, arr) => (
+                        <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < arr.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2563eb", flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, color: "#374151" }}>{m}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Allergies */}
+                  <div style={{ border: "1px solid #ddd6fe", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 14px", background: "#f5f3ff", borderBottom: "1px solid #ddd6fe", display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#5b21b6", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Allergies</span>
+                    </div>
+                    <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column" as const, gap: 4 }}>
+                      {[...d.allergies.reconciled, ...d.allergies.unreconciled].map((a, i, arr) => (
+                        <div key={a} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < arr.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c3aed", flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, color: "#374151" }}>{a}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <SectionCard title="Immunizations">
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead style={{ background: "#f8fafc" }}>
-                      <tr>
-                        {["Vaccine", "Status"].map((h) => <th key={h} style={thS}>{h}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...d.immunizations.reconciled.map((v) => ({ vaccine: v, reconciled: true })), ...d.immunizations.unreconciled.map((v) => ({ vaccine: v, reconciled: false }))].map((im) => (
-                        <tr key={im.vaccine}>
-                          <td style={tdS}>{im.vaccine}</td>
-                          <td style={tdS}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: im.reconciled ? "#16a34a" : "#d97706" }}>
-                              {im.reconciled
-                                ? <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#dcfce7" /><path d="M4 7l2.5 2.5L10 5" stroke="#16a34a" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
-                                : <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#fef3c7" stroke="#f59e0b" strokeWidth="1" /></svg>}
-                              {im.reconciled ? "Reconciled" : "Pending"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </SectionCard>
-                <SectionCard title="Screenings & Labs">
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead style={{ background: "#f8fafc" }}>
-                      <tr>
-                        {["Test", "Facility", "Date"].map((h) => <th key={h} style={thS}>{h}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {d.screeningsAndLabs.map((sc, i) => (
-                        <tr key={i}>
-                          <td style={tdS}>{sc.test}</td>
-                          <td style={{ ...tdS, color: "#475569" }}>{sc.facility}</td>
-                          <td style={{ ...tdS, color: "#64748b" }}>{sc.date}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </SectionCard>
+              {/* Bottom row: Immunizations + Screenings */}
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(90deg,#f8fafc 0%,#fff 100%)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 2, background: "#16a34a", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", letterSpacing: "0.01em" }}>Preventive Care</span>
+                </div>
+                <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  {/* Immunizations */}
+                  <div style={{ border: "1px solid #bbf7d0", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 14px", background: "#f0fdf4", borderBottom: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Immunizations</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr style={{ background: "#f8fafc" }}>{["Vaccine", "Date Administered", "Administered By"].map(h => <th key={h} style={{ padding: "6px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {[...d.immunizations.reconciled.map(v => ({ ...v, reconciled: true })), ...d.immunizations.unreconciled.map(v => ({ ...v, reconciled: false }))].map((im, i) => (
+                          <tr key={im.name + i} style={{ background: i % 2 === 0 ? "#fff" : "#f0fdf4" }}>
+                            <td style={{ padding: "7px 12px", fontSize: 12, color: "#374151", borderBottom: "1px solid #f1f5f9", fontWeight: 500 }}>{im.name || "—"}</td>
+                            <td style={{ padding: "7px 12px", fontSize: 12, color: im.date ? "#374151" : "#9ca3af", borderBottom: "1px solid #f1f5f9" }}>{im.date || "—"}</td>
+                            <td style={{ padding: "7px 12px", fontSize: 12, color: im.administeredBy ? "#374151" : "#9ca3af", borderBottom: "1px solid #f1f5f9" }}>{im.administeredBy || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Screenings & Labs */}
+                  <div style={{ border: "1px solid #e0e7ff", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 14px", background: "#eef2ff", borderBottom: "1px solid #e0e7ff", display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4m0-4h6m0 0v4m0-4h4a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-4"/></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#3730a3", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Screenings & Labs</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr style={{ background: "#f8fafc" }}>{["Test", "Facility", "Date"].map(h => <th key={h} style={{ padding: "6px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {d.screeningsAndLabs.map((sc, i) => (
+                          <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#eef2ff" }}>
+                            <td style={{ padding: "7px 12px", fontSize: 12, color: "#1e293b", fontWeight: 500, borderBottom: "1px solid #f1f5f9" }}>{sc.test}</td>
+                            <td style={{ padding: "7px 12px", fontSize: 12, color: "#475569", borderBottom: "1px solid #f1f5f9" }}>{sc.facility}</td>
+                            <td style={{ padding: "7px 12px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{sc.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           )}
           {/* ROI tab */}
           {activeTab === "roi" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Action Center Tasks */}
               {isAuthenticated && (
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Action Center Tasks <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>live</span></span>
-                    <button onClick={liveRefresh} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 12, padding: "3px 10px", cursor: "pointer", color: "#475569" }}>↻</button>
-                  </div>
-                  {liveLoading && liveTasks.length === 0 && <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>Loading…</p>}
-                  {liveError && <p style={{ fontSize: 13, color: "#dc2626", margin: 0 }}>{liveError.message}</p>}
-                  {!liveLoading && !liveError && liveTasks.length === 0 && <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>No action center tasks for this patient.</p>}
-                  {liveTasks.map((task) => (
-                    <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", background: "#f8fafc", borderRadius: 5, border: "1px solid #e2e8f0", marginBottom: 5 }}>
-                      <span style={{ flex: 1, fontSize: 13 }}>{task.title}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: task.status === "Completed" ? "#16a34a" : "#d97706" }}>{task.status}</span>
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(90deg,#f8fafc 0%,#fff 100%)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 4, height: 18, borderRadius: 2, background: "#0891b2", flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Action Center Tasks</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "#0891b2", background: "#ecfeff", border: "1px solid #cffafe", padding: "2px 8px", borderRadius: 20 }}>LIVE</span>
                     </div>
-                  ))}
+                    <button onClick={liveRefresh} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12, padding: "4px 12px", cursor: "pointer", color: "#475569", fontWeight: 600 }}>↻ Refresh</button>
+                  </div>
+                  <div style={{ padding: "12px 20px" }}>
+                    {liveLoading && liveTasks.length === 0 && <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>Loading…</p>}
+                    {liveError && <p style={{ fontSize: 13, color: "#d97706", margin: 0 }}>{liveError.message}</p>}
+                    {!liveLoading && !liveError && liveTasks.length === 0 && <p style={{ fontSize: 13, color: "#94a3b8", margin: "4px 0", fontStyle: "italic" }}>No action center tasks for this patient.</p>}
+                    {liveTasks.map((task, i) => (
+                      <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 12px", background: i % 2 === 0 ? "#f8fafc" : "#fff", borderRadius: 6, border: "1px solid #e2e8f0", marginBottom: 6 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+                        <span style={{ flex: 1, fontSize: 13, color: "#374151" }}>{task.title}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: task.status === "Completed" ? "#16a34a" : "#d97706", background: task.status === "Completed" ? "#dcfce7" : "#fef3c7", padding: "2px 8px", borderRadius: 20 }}>{task.status}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>Release of Information Requests</div>
+              {/* ROI Requests */}
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #e5e7eb", background: "linear-gradient(90deg,#f8fafc 0%,#fff 100%)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 4, height: 18, borderRadius: 2, background: "#7c3aed", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Release of Information Requests</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#6d28d9", background: "#f5f3ff", border: "1px solid #ddd6fe", padding: "2px 8px", borderRadius: 20 }}>{d.roi.length} record{d.roi.length !== 1 ? "s" : ""}</span>
+                  </div>
                   {patient.status !== "Completed" && (
-                    <button onClick={onCreateROI} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    <button onClick={onCreateROI} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 1px 3px rgba(37,99,235,0.3)" }}>
                       + New ROI Request
                     </button>
                   )}
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead style={{ background: "#f8fafc" }}><tr>{["ID", "Facility", "Requested Date", "Status"].map((h) => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <thead><tr style={{ background: "#f8fafc" }}>{["ID", "Facility", "Requested Date", "Status"].map(h => <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.06em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {d.roi.map((r) => (
-                      <tr key={r.id}>
-                        <td style={tdS}>{r.id}</td>
-                        <td style={tdS}>{r.facility}</td>
-                        <td style={{ ...tdS, color: "#64748b" }}>{r.requestedDate}</td>
-                        <td style={tdS}><span style={roiStatusStyle(r.status)}>{r.status.toUpperCase()}</span></td>
+                    {d.roi.map((r, i) => (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                        <td style={{ padding: "9px 14px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>#{r.id}</td>
+                        <td style={{ padding: "9px 14px", fontSize: 13, color: "#1e293b", fontWeight: 500, borderBottom: "1px solid #f1f5f9" }}>{r.facility}</td>
+                        <td style={{ padding: "9px 14px", fontSize: 12, color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{r.requestedDate}</td>
+                        <td style={{ padding: "9px 14px", borderBottom: "1px solid #f1f5f9" }}><span style={roiStatusStyle(r.status)}>{r.status.toUpperCase()}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1271,8 +1196,14 @@ function CreateROIPage({ patient, authState, onBack, onSubmit }: {
     onSubmit({ id: taskId ?? Date.now(), facility: facilityName, requestedDate: new Date().toISOString().split("T")[0], status: roiType });
     setSubmitting(false);
   };
-  const secStyle: React.CSSProperties = { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", marginBottom: 16 };
-  const secTitle: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 16 };
+  const secStyle = (accent: string, bg: string, border: string): React.CSSProperties => ({ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)", marginBottom: 16 });
+  const secHeader = (accent: string, bg: string, border: string, label: string, icon: React.ReactNode) => (
+    <div style={{ padding: "14px 20px", borderBottom: `1px solid ${border}`, background: bg, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 4, height: 18, borderRadius: 2, background: accent, flexShrink: 0 }} />
+      {icon}
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", letterSpacing: "0.01em" }}>{label}</span>
+    </div>
+  );
   const grid2: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" };
   const grid3: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 24px" };
   return (
@@ -1284,16 +1215,28 @@ function CreateROIPage({ patient, authState, onBack, onSubmit }: {
         </button>
       </div>
       <div style={{ padding: "32px 36px", maxWidth: 860 }}>
-        <h1 style={{ margin: "0 0 6px 0", fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Release of Information Request</h1>
-        <p style={{ margin: "0 0 28px 0", fontSize: 13, color: "#64748b" }}>Patient: <strong style={{ color: "#0f172a" }}>{patient.name}</strong> · {patient.mrn}</p>
+        {/* Page header */}
+        <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: "#f5f3ff", border: "1px solid #ddd6fe", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0f172a" }}>Release of Information Request</h1>
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Patient: <strong style={{ color: "#0f172a" }}>{patient.name}</strong> <span style={{ color: "#94a3b8" }}>·</span> <span style={{ fontFamily: "monospace", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>{patient.mrn}</span></p>
+        </div>
         {sdkError && (
-          <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: 7, padding: "10px 16px", marginBottom: 16 }}>
-            <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>Task creation failed: {sdkError}. Request saved locally.</p>
+          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <p style={{ color: "#92400e", fontSize: 13, margin: 0 }}>Task creation failed: {sdkError}. Request saved locally.</p>
           </div>
         )}
-        <div style={secStyle}>
-          <div style={secTitle}>Request Details</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+        {/* Request Details */}
+        <div style={secStyle("#2563eb", "#eff6ff", "#bfdbfe")}>
+          {secHeader("#2563eb", "linear-gradient(90deg,#eff6ff,#fff)", "#bfdbfe", "Request Details",
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          )}
+          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
             <FormField label="ROI Type">
               <select value={roiType} onChange={(e) => setROIType(e.target.value)} style={inputCss}>
                 <option>Patient Signature Required</option>
@@ -1308,56 +1251,72 @@ function CreateROIPage({ patient, authState, onBack, onSubmit }: {
             </FormField>
           </div>
         </div>
-        <div style={secStyle}>
-          <div style={secTitle}>Records to be Released</div>
-          <div style={grid2}>
-            <CheckboxItem label="Behavioral Health" obj={records} k="behavioralHealth" set={setRecords} />
-            <CheckboxItem label="Emergency Dept" obj={records} k="emergencyDept" set={setRecords} />
-            <CheckboxItem label="Operative Notes" obj={records} k="operativeNotes" set={setRecords} />
-            <CheckboxItem label="Provider Notes" obj={records} k="providerNotes" set={setRecords} />
-            <CheckboxItem label="Therapy Notes" obj={records} k="therapyNotes" set={setRecords} />
-            <FormField label="Other">
-              <input value={records.otherDocument} onChange={(e) => setRecords({ ...records, otherDocument: e.target.value })} placeholder="Specify other records" style={inputCss} />
-            </FormField>
+        {/* Records to be Released */}
+        <div style={secStyle("#0891b2", "#ecfeff", "#cffafe")}>
+          {secHeader("#0891b2", "linear-gradient(90deg,#ecfeff,#fff)", "#cffafe", "Records to be Released",
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0e7490" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          )}
+          <div style={{ padding: "16px 20px" }}>
+            <div style={grid2}>
+              <CheckboxItem label="Behavioral Health" obj={records} k="behavioralHealth" set={setRecords} />
+              <CheckboxItem label="Emergency Dept" obj={records} k="emergencyDept" set={setRecords} />
+              <CheckboxItem label="Operative Notes" obj={records} k="operativeNotes" set={setRecords} />
+              <CheckboxItem label="Provider Notes" obj={records} k="providerNotes" set={setRecords} />
+              <CheckboxItem label="Therapy Notes" obj={records} k="therapyNotes" set={setRecords} />
+              <FormField label="Other">
+                <input value={records.otherDocument} onChange={(e) => setRecords({ ...records, otherDocument: e.target.value })} placeholder="Specify other records" style={inputCss} />
+              </FormField>
+            </div>
           </div>
         </div>
-        <div style={secStyle}>
-          <div style={secTitle}>Additional Records</div>
-          <div style={grid3}>
-            <CheckboxItem label="Allergy List" obj={additional} k="allergyList" set={setAdditional} />
-            <CheckboxItem label="Immunizations" obj={additional} k="immunizations" set={setAdditional} />
-            <CheckboxItem label="Medication List" obj={additional} k="medicationList" set={setAdditional} />
-            <CheckboxItem label="Lab Results" obj={additional} k="labResults" set={setAdditional} />
-            <CheckboxItem label="Hiv Lab" obj={additional} k="hivLab" set={setAdditional} />
-            <CheckboxItem label="Genetic Testing" obj={additional} k="geneticTesting" set={setAdditional} />
-            <CheckboxItem label="Pathology" obj={additional} k="pathology" set={setAdditional} />
-            <CheckboxItem label="Ekg" obj={additional} k="ekg" set={setAdditional} />
-            <CheckboxItem label="Radiology Report" obj={additional} k="radiologyReport" set={setAdditional} />
-            <CheckboxItem label="Radiology Images" obj={additional} k="radiologyImages" set={setAdditional} />
-            <CheckboxItem label="Billing Info" obj={additional} k="billingInfo" set={setAdditional} />
+        {/* Additional Records */}
+        <div style={secStyle("#16a34a", "#f0fdf4", "#bbf7d0")}>
+          {secHeader("#16a34a", "linear-gradient(90deg,#f0fdf4,#fff)", "#bbf7d0", "Additional Records",
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4m0-4h6m0 0v4m0-4h4a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-4"/></svg>
+          )}
+          <div style={{ padding: "16px 20px" }}>
+            <div style={grid3}>
+              <CheckboxItem label="Allergy List" obj={additional} k="allergyList" set={setAdditional} />
+              <CheckboxItem label="Immunizations" obj={additional} k="immunizations" set={setAdditional} />
+              <CheckboxItem label="Medication List" obj={additional} k="medicationList" set={setAdditional} />
+              <CheckboxItem label="Lab Results" obj={additional} k="labResults" set={setAdditional} />
+              <CheckboxItem label="Hiv Lab" obj={additional} k="hivLab" set={setAdditional} />
+              <CheckboxItem label="Genetic Testing" obj={additional} k="geneticTesting" set={setAdditional} />
+              <CheckboxItem label="Pathology" obj={additional} k="pathology" set={setAdditional} />
+              <CheckboxItem label="Ekg" obj={additional} k="ekg" set={setAdditional} />
+              <CheckboxItem label="Radiology Report" obj={additional} k="radiologyReport" set={setAdditional} />
+              <CheckboxItem label="Radiology Images" obj={additional} k="radiologyImages" set={setAdditional} />
+              <CheckboxItem label="Billing Info" obj={additional} k="billingInfo" set={setAdditional} />
+            </div>
           </div>
         </div>
-        <div style={secStyle}>
-          <div style={secTitle}>Substance Abuse Records</div>
-          <div style={grid2}>
-            <CheckboxItem label="Assessment" obj={substance} k="assessment" set={setSubstance} />
-            <CheckboxItem label="History Physical" obj={substance} k="historyPhysical" set={setSubstance} />
-            <CheckboxItem label="Multidisciplinary Notes" obj={substance} k="multidisciplinaryNotes" set={setSubstance} />
-            <CheckboxItem label="Family Participation" obj={substance} k="familyParticipation" set={setSubstance} />
-            <CheckboxItem label="Questionnaires" obj={substance} k="questionnaires" set={setSubstance} />
-            <CheckboxItem label="Treatment Summary" obj={substance} k="treatmentSummary" set={setSubstance} />
-            <CheckboxItem label="Treatment Plans" obj={substance} k="treatmentPlans" set={setSubstance} />
-            <FormField label="Other">
-              <input value={substance.other} onChange={(e) => setSubstance({ ...substance, other: e.target.value })} placeholder="Specify other records" style={inputCss} />
-            </FormField>
+        {/* Substance Abuse Records */}
+        <div style={secStyle("#d97706", "#fffbeb", "#fde68a")}>
+          {secHeader("#d97706", "linear-gradient(90deg,#fffbeb,#fff)", "#fde68a", "Substance Abuse Records",
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          )}
+          <div style={{ padding: "16px 20px" }}>
+            <div style={grid2}>
+              <CheckboxItem label="Assessment" obj={substance} k="assessment" set={setSubstance} />
+              <CheckboxItem label="History Physical" obj={substance} k="historyPhysical" set={setSubstance} />
+              <CheckboxItem label="Multidisciplinary Notes" obj={substance} k="multidisciplinaryNotes" set={setSubstance} />
+              <CheckboxItem label="Family Participation" obj={substance} k="familyParticipation" set={setSubstance} />
+              <CheckboxItem label="Questionnaires" obj={substance} k="questionnaires" set={setSubstance} />
+              <CheckboxItem label="Treatment Summary" obj={substance} k="treatmentSummary" set={setSubstance} />
+              <CheckboxItem label="Treatment Plans" obj={substance} k="treatmentPlans" set={setSubstance} />
+              <FormField label="Other">
+                <input value={substance.other} onChange={(e) => setSubstance({ ...substance, other: e.target.value })} placeholder="Specify other records" style={inputCss} />
+              </FormField>
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
+        {/* Submit */}
+        <div style={{ display: "flex", gap: 12, paddingTop: 4 }}>
           <button onClick={submitting ? undefined : handleSubmit} disabled={submitting}
-            style={{ padding: "10px 20px", background: submitting ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}>
+            style={{ padding: "10px 22px", background: submitting ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer", boxShadow: submitting ? "none" : "0 1px 3px rgba(37,99,235,0.3)" }}>
             {submitting ? "Submitting…" : canCreateTask ? "Submit & Create Action Center Task" : "Trigger ROI Request"}
           </button>
-          <button onClick={onBack} style={{ padding: "10px 20px", background: "#fff", color: "#374151", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+          <button onClick={onBack} style={{ padding: "10px 22px", background: "#fff", color: "#374151", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
         </div>
       </div>
     </div>
